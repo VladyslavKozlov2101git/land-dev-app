@@ -172,6 +172,7 @@ export default function DrawingCanvas({
           onSelectPoint={onSelectPoint}
           mode={mode}
           zoom={zoom}
+          setZoom={setZoom}
           pan={pan}
           setPan={setPan}
           isPanning={isPanning}

@@ -3,7 +3,7 @@ import { Point, AdjacentBoundary } from '../types';
 /**
  * Calculates the distance between two metric points in meters.
  */
-export function calculateDistance(p1: Point, p2: Point): number {
+export function calculateDistance(p1: { x: number; y: number }, p2: { x: number; y: number }): number {
   return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
 }
 
