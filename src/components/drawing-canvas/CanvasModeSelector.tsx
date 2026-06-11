@@ -1,7 +1,6 @@
 import React from 'react';
 import { Plus } from 'lucide-react';
-
-type DrawMode = 'VIEW' | 'EDIT_PARCEL' | 'ADD_BUILDING' | 'ADD_RESTRICTION';
+import { DrawMode } from '../../types';
 
 interface CanvasModeSelectorProps {
   mode: DrawMode;
@@ -43,6 +42,15 @@ export default function CanvasModeSelector({
           }}
           className={`px-2.5 py-1 rounded font-medium flex items-center gap-1.5 transition-all ${mode === 'ADD_RESTRICTION' ? 'bg-amber-600 text-white' : 'bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100/50'}`}>
           <Plus className="h-3.5 w-3.5" /> Обмеження
+        </button>
+        <button
+          id="mode_add_lu_btn"
+          onClick={() => {
+            setMode('ADD_LAND_USE');
+            onClearTempPoints();
+          }}
+          className={`px-2.5 py-1 rounded font-medium flex items-center gap-1.5 transition-all ${mode === 'ADD_LAND_USE' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100/50'}`}>
+          <Plus className="h-3.5 w-3.5" /> Угіддя
         </button>
       </div>
 

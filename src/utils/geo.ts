@@ -286,3 +286,181 @@ export function createSampleCadastralModel(): import('../types').CadastralModel 
     ]
   };
 }
+
+/**
+ * Checks if a point is inside a polygon using the Ray-Casting algorithm.
+ */
+export function isPointInPolygon(pt: { x: number; y: number }, poly: Point[]): boolean {
+  if (poly.length < 3) return false;
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i].x, yi = poly[i].y;
+    const xj = poly[j].x, yj = poly[j].y;
+
+    const intersect = ((yi > pt.y) !== (yj > pt.y))
+        && (pt.x < (xj - xi) * (pt.y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+/**
+ * Calculates the shortest distance from a point to a line segment.
+ */
+export function distanceToSegment(pt: { x: number; y: number }, p1: Point, p2: Point): number {
+  const C = p2.x - p1.x;
+  const D = p2.y - p1.y;
+  const lenSq = C * C + D * D;
+  if (lenSq === 0) {
+    const dx = pt.x - p1.x;
+    const dy = pt.y - p1.y;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  const dot = (pt.x - p1.x) * C + (pt.y - p1.y) * D;
+  let param = dot / lenSq;
+  if (param < 0) param = 0;
+  if (param > 1) param = 1;
+
+  const xx = p1.x + param * C;
+  const yy = p1.y + param * D;
+
+  const dx = pt.x - xx;
+  const dy = pt.y - yy;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+/**
+ * Checks if a point is inside or very close to the boundary of a polygon.
+ */
+export function isPointInsideOrOnBoundary(pt: { x: number; y: number }, poly: Point[]): boolean {
+  if (isPointInPolygon(pt, poly)) return true;
+  for (let i = 0; i < poly.length; i++) {
+    const next = poly[(i + 1) % poly.length];
+    if (distanceToSegment(pt, poly[i], next) < 0.01) { // 1cm tolerance
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Computes intersection of segment p1->p2 and segment p3->p4.
+ * Returns the intersection coordinate if it lies on both segments, otherwise null.
+ */
+export function getLineIntersection(
+  p1: { x: number; y: number },
+  p2: { x: number; y: number },
+  p3: { x: number; y: number },
+  p4: { x: number; y: number }
+): { x: number; y: number } | null {
+  const denom = (p4.y - p3.y) * (p2.x - p1.x) - (p4.x - p3.x) * (p2.y - p1.y);
+  if (Math.abs(denom) < 1e-9) return null; // Parallel/collinear
+
+  const ua = ((p4.x - p3.x) * (p1.y - p3.y) - (p4.y - p3.y) * (p1.x - p3.x)) / denom;
+  const ub = ((p2.x - p1.x) * (p1.y - p3.y) - (p2.y - p1.y) * (p1.x - p3.x)) / denom;
+
+  if (ua >= -0.0001 && ua <= 1.0001 && ub >= -0.0001 && ub <= 1.0001) {
+    return {
+      x: p1.x + ua * (p2.x - p1.x),
+      y: p1.y + ua * (p2.y - p1.y),
+    };
+  }
+  return null;
+}
+
+/**
+ * Checks if polygon A is completely inside polygon B.
+ */
+export function isPolygonInsidePolygon(polyA: Point[], polyB: Point[]): boolean {
+  if (polyA.length === 0 || polyB.length === 0) return false;
+
+  // 1. All vertices of A must be inside or on the boundary of B
+  for (const p of polyA) {
+    if (!isPointInsideOrOnBoundary(p, polyB)) {
+      return false;
+    }
+  }
+
+  // 2. No edge of A can cross an edge of B (except at endpoints)
+  for (let i = 0; i < polyA.length; i++) {
+    const nextA = polyA[(i + 1) % polyA.length];
+    for (let j = 0; j < polyB.length; j++) {
+      const nextB = polyB[(j + 1) % polyB.length];
+      const inter = getLineIntersection(polyA[i], nextA, polyB[j], nextB);
+      if (inter) {
+        // Exclude intersection close to endpoints
+        const isNearEndpoint = 
+          calculateDistance(inter, polyA[i]) < 0.01 ||
+          calculateDistance(inter, nextA) < 0.01 ||
+          calculateDistance(inter, polyB[j]) < 0.01 ||
+          calculateDistance(inter, nextB) < 0.01;
+        if (!isNearEndpoint) {
+          return false; // Real crossing/intersection
+        }
+      }
+    }
+  }
+  return true;
+}
+
+/**
+ * Checks if two polygons overlap.
+ */
+export function doPolygonsOverlap(polyA: Point[], polyB: Point[]): boolean {
+  if (polyA.length === 0 || polyB.length === 0) return false;
+
+  // 1. Check if any vertex of A is strictly inside B
+  for (const p of polyA) {
+    if (isPointInPolygon(p, polyB)) return true;
+  }
+
+  // 2. Check if any vertex of B is strictly inside A
+  for (const p of polyB) {
+    if (isPointInPolygon(p, polyA)) return true;
+  }
+
+  // 3. Check if any edges cross
+  for (let i = 0; i < polyA.length; i++) {
+    const nextA = polyA[(i + 1) % polyA.length];
+    for (let j = 0; j < polyB.length; j++) {
+      const nextB = polyB[(j + 1) % polyB.length];
+      const inter = getLineIntersection(polyA[i], nextA, polyB[j], nextB);
+      if (inter) {
+        const isNearEndpoint = 
+          calculateDistance(inter, polyA[i]) < 0.01 ||
+          calculateDistance(inter, nextA) < 0.01 ||
+          calculateDistance(inter, polyB[j]) < 0.01 ||
+          calculateDistance(inter, nextB) < 0.01;
+        if (!isNearEndpoint) {
+          return true; // overlapping cross
+        }
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * Project point to closest point on segment p1->p2
+ */
+export function getClosestPointOnSegment(
+  pt: { x: number; y: number },
+  p1: Point,
+  p2: Point
+): { x: number; y: number } {
+  const C = p2.x - p1.x;
+  const D = p2.y - p1.y;
+  const lenSq = C * C + D * D;
+  if (lenSq === 0) return { x: p1.x, y: p1.y };
+
+  const dot = (pt.x - p1.x) * C + (pt.y - p1.y) * D;
+  let param = dot / lenSq;
+  if (param < 0) param = 0;
+  if (param > 1) param = 1;
+
+  return {
+    x: p1.x + param * C,
+    y: p1.y + param * D
+  };
+}

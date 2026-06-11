@@ -1,7 +1,6 @@
 import React from 'react';
 import { Check } from 'lucide-react';
-
-type DrawMode = 'VIEW' | 'EDIT_PARCEL' | 'ADD_BUILDING' | 'ADD_RESTRICTION';
+import { DrawMode } from '../../types';
 
 interface CanvasDrawOverlayProps {
   mode: DrawMode;
@@ -42,13 +41,15 @@ export default function CanvasDrawOverlay({
           placeholder={
             mode === 'ADD_BUILDING'
               ? 'Житловий будинок літ. А-1'
+              : mode === 'ADD_LAND_USE'
+              ? 'Рілля (городи)'
               : 'Охоронна зона інженерних комунікацій'
           }
           className="px-2 py-1 bg-white border border-slate-350 rounded focus:outline-none focus:ring-2 focus:ring-blue-100 text-xs flex-grow max-w-sm"
         />
       </div>
 
-      {mode === 'ADD_RESTRICTION' && (
+      {(mode === 'ADD_RESTRICTION' || mode === 'ADD_LAND_USE') && (
         <div className="flex items-center gap-1.5">
           <span className="font-semibold text-slate-700">Код:</span>
           <input
@@ -56,8 +57,8 @@ export default function CanvasDrawOverlay({
             type="text"
             value={tempCode}
             onChange={(e) => setTempCode(e.target.value)}
-            placeholder="01.05"
-            className="w-16 px-1.5 py-1 bg-white border border-slate-350 rounded focus:outline-none focus:ring-2 focus:ring-blue-100 text-center font-mono text-xs"
+            placeholder={mode === 'ADD_LAND_USE' ? '001.01' : '01.05'}
+            className="w-16 px-1.5 py-1 bg-white border border-slate-355 rounded focus:outline-none focus:ring-2 focus:ring-blue-100 text-center font-mono text-xs"
           />
         </div>
       )}

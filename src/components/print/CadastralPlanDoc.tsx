@@ -121,6 +121,24 @@ export default function CadastralPlanDoc({
             height={drawH}
             className="mx-auto"
           >
+            {/* 0. Drawn Land Use Zones (угіддя) */}
+            {(model.landUseExplication || []).map((lu, luIdx) => {
+              if (!lu.points || lu.points.length === 0) return null;
+              const pathStr = getPointsPolygonPath(lu.points);
+              if (!pathStr) return null;
+              return (
+                <g key={`pr_lu_${luIdx}`}>
+                  <path
+                    d={pathStr}
+                    fill="url(#print-lu-dot)"
+                    stroke="#475569"
+                    strokeWidth="0.75"
+                    strokeDasharray="3 3"
+                  />
+                </g>
+              );
+            })}
+
             {/* 1. Restrictions Zone shade */}
             {model.restrictions.map((r, rIdx) => {
               const pathStr = getPointsPolygonPath(r.points);
@@ -232,13 +250,17 @@ export default function CadastralPlanDoc({
               <pattern id="print-hatch" width="6" height="6" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
                 <line x1="0" y1="0" x2="0" y2="6" stroke="black" strokeWidth="0.5" />
               </pattern>
+              <pattern id="print-lu-dot" width="8" height="8" patternUnits="userSpaceOnUse">
+                <circle cx="2" cy="2" r="0.75" fill="#64748b" />
+              </pattern>
             </defs>
           </svg>
 
           <div className="text-[10px] text-slate-500 font-sans mt-2 flex justify-between w-full max-w-sm">
             <span>Масштаб креслення: 1:{model.scale}</span>
-            <span>Суцільний контур — Межа ділянки</span>
-            <span>Штриховка — Споруди</span>
+            <span>Суцільний — Межа</span>
+            <span>Штриховка — Будинки</span>
+            <span>Крапки — Угіддя</span>
           </div>
         </div>
 

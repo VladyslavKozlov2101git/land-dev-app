@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CadastralModel } from '../../types';
 import { CheckSquare, ChevronUp, ChevronDown } from 'lucide-react';
+import { isPolygonInsidePolygon, doPolygonsOverlap } from '../../utils/geo';
 
 interface ChecklistPanelProps {
   model: CadastralModel;
@@ -9,12 +10,52 @@ interface ChecklistPanelProps {
 export default function ChecklistPanel({ model }: ChecklistPanelProps) {
   const [isChecklistVisible, setIsChecklistVisible] = useState(true);
 
+  // Check if any buildings overlap
+  let hasOverlap = false;
+  let overlappingNames = '';
+  for (let i = 0; i < model.buildings.length; i++) {
+    for (let j = i + 1; j < model.buildings.length; j++) {
+      if (doPolygonsOverlap(model.buildings[i].points, model.buildings[j].points)) {
+        hasOverlap = true;
+        overlappingNames = `${model.buildings[i].name} та ${model.buildings[j].name}`;
+        break;
+      }
+    }
+  }
+
+  const buildingsDoNotOverlap = !hasOverlap;
+  const buildingsInside = model.buildings.every(b => isPolygonInsidePolygon(b.points, model.points));
+  const restrictionsInside = model.restrictions.every(r => isPolygonInsidePolygon(r.points, model.points));
+  
+  const drawableLandUse = (model.landUseExplication || []).filter(lu => lu.points && lu.points.length >= 3);
+  const landUseInside = drawableLandUse.every(lu => isPolygonInsidePolygon(lu.points!, model.points));
+
   const checks = [
     { label: 'Межові точки визначено', checked: model.points.length >= 3, detail: `${model.points.length} поворотних точок` },
     { label: 'Кадастровий номер заповнено', checked: model.cadastralNumber.trim().length > 6, detail: model.cadastralNumber },
     { label: 'Реквізити ДРРП внесено', checked: model.drrpRegNumber.trim().length > 3, detail: `№ ${model.drrpRegNumber || "немає"}` },
     { label: 'Суб\'єкт права вказано', checked: model.ownerName.trim().length > 3, detail: model.ownerName },
-    { label: 'Суміжники погоджені', checked: model.adjacentBoundaries.every(adj => adj.description.length > 5), detail: `${model.adjacentBoundaries.length} суміжних меж` }
+    { label: 'Суміжники погоджені', checked: model.adjacentBoundaries.every(adj => adj.description.length > 5), detail: `${model.adjacentBoundaries.length} суміжних меж` },
+    { 
+      label: 'Будинки не накладаються', 
+      checked: buildingsDoNotOverlap, 
+      detail: buildingsDoNotOverlap ? 'Накладань не виявлено' : `Перетин: ${overlappingNames}` 
+    },
+    { 
+      label: 'Будинки в межах ділянки', 
+      checked: buildingsInside, 
+      detail: buildingsInside ? 'Усі в межах ділянки' : 'Виявлено вихід за межу' 
+    },
+    { 
+      label: 'Обмеження в межах ділянки', 
+      checked: restrictionsInside, 
+      detail: restrictionsInside ? 'Усі в межах ділянки' : 'Виявлено вихід за межу' 
+    },
+    { 
+      label: 'Угіддя в межах ділянки', 
+      checked: landUseInside, 
+      detail: landUseInside ? 'Усі в межах ділянки' : 'Виявлено вихід за межу' 
+    }
   ];
 
   const totalCompletedChecks = checks.filter(c => c.checked).length;

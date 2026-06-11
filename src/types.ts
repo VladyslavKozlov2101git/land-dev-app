@@ -74,6 +74,7 @@ export interface LandUseExplication {
   code: string; // e.g. "007.01"
   name: string; // e.g. "під житловою забудовою"
   area: number; // area in sq m
+  points?: Point[];
 }
 
 export interface GeoJSONFeature {
@@ -89,3 +90,5 @@ export interface GeoJSONDocument {
   type: 'FeatureCollection';
   features: GeoJSONFeature[];
 }
+
+export type DrawMode = 'VIEW' | 'EDIT_PARCEL' | 'ADD_BUILDING' | 'ADD_RESTRICTION' | 'ADD_LAND_USE';

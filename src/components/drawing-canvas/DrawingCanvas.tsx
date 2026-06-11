@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Point, CadastralModel, Building, Restriction } from '../../types';
+import { Point, CadastralModel, Building, Restriction, DrawMode, LandUseExplication } from '../../types';
 import CanvasToolbar from './CanvasToolbar';
 import CanvasModeSelector from './CanvasModeSelector';
 import CanvasDrawOverlay from './CanvasDrawOverlay';
@@ -12,8 +12,6 @@ interface DrawingCanvasProps {
   selectedPointId: string | null;
   onSelectPoint: (id: string | null) => void;
 }
-
-type DrawMode = 'VIEW' | 'EDIT_PARCEL' | 'ADD_BUILDING' | 'ADD_RESTRICTION';
 
 export default function DrawingCanvas({
   model,
@@ -111,10 +109,23 @@ export default function DrawingCanvas({
       onUpdateModel({
         restrictions: [...model.restrictions, newRestriction],
       });
+    } else if (mode === 'ADD_LAND_USE') {
+      const name = tempName.trim() || `Земельні угіддя (${tempCode})`;
+      const newLandUse: LandUseExplication = {
+        id: `lu_${Date.now()}`,
+        code: tempCode || '001.01',
+        name,
+        points: tempPoints,
+        area: Math.round(parseFloat(computeTempArea()) * 10) / 10,
+      };
+      onUpdateModel({
+        landUseExplication: [...(model.landUseExplication || []), newLandUse],
+      });
     }
 
     setTempPoints([]);
     setTempName('');
+    setTempCode('01.05'); // reset default
     setMode('VIEW');
   };
 
