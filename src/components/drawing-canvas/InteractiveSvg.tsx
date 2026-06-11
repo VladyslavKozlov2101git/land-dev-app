@@ -25,6 +25,31 @@ interface Segment {
   label: string;
 }
 
+function distanceToScreenSegment(
+  cx: number,
+  cy: number,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number
+): { distance: number; x: number; y: number } {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+
+  if (lenSq === 0) {
+    const d = Math.sqrt((cx - x1) ** 2 + (cy - y1) ** 2);
+    return { distance: d, x: x1, y: y1 };
+  }
+
+  const t = Math.max(0, Math.min(1, ((cx - x1) * dx + (cy - y1) * dy) / lenSq));
+  const projX = x1 + t * dx;
+  const projY = y1 + t * dy;
+
+  const d = Math.sqrt((cx - projX) ** 2 + (cy - projY) ** 2);
+  return { distance: d, x: projX, y: projY };
+}
+
 interface InteractiveSvgProps {
   model: CadastralModel;
   onUpdateModel: (updates: Partial<CadastralModel>) => void;
@@ -84,6 +109,105 @@ export default function InteractiveSvg({
 }: InteractiveSvgProps) {
   const startPanPos = useRef({ x: 0, y: 0 });
   const isDrawing = mode === 'ADD_BUILDING' || mode === 'ADD_RESTRICTION' || mode === 'ADD_LAND_USE';
+
+  // Global keydown event listener to delete selected points
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      if (
+        activeEl &&
+        (activeEl.tagName === 'INPUT' ||
+          activeEl.tagName === 'TEXTAREA' ||
+          activeEl.getAttribute('contenteditable') === 'true')
+      ) {
+        return; // Ignore if user is editing text fields
+      }
+
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedPointId) {
+        e.preventDefault();
+
+        // 1. Check parcel points
+        const parcelPtIdx = model.points.findIndex(p => p.id === selectedPointId);
+        if (parcelPtIdx !== -1) {
+          if (model.points.length <= 3) {
+            alert('Земельна ділянка повинна мати щонайменше 3 поворотні точки меж.');
+            return;
+          }
+          const updated = model.points.filter(p => p.id !== selectedPointId);
+          onUpdateModel({ points: updated });
+          onSelectPoint(null);
+          return;
+        }
+
+        // 2. Check buildings points
+        for (const b of model.buildings) {
+          const ptIdx = b.points.findIndex(p => p.id === selectedPointId);
+          if (ptIdx !== -1) {
+            if (b.points.length <= 3) {
+              alert('Споруда повинна мати щонайменше 3 вершини.');
+              return;
+            }
+            const updatedPts = b.points.filter(p => p.id !== selectedPointId);
+            const updatedBuildings = model.buildings.map(item =>
+              item.id === b.id
+                ? { ...item, points: updatedPts, area: Math.round(calculatePolygonArea(updatedPts) * 10) / 10 }
+                : item
+            );
+            onUpdateModel({ buildings: updatedBuildings });
+            onSelectPoint(null);
+            return;
+          }
+        }
+
+        // 3. Check restrictions points
+        for (const r of model.restrictions) {
+          const ptIdx = r.points.findIndex(p => p.id === selectedPointId);
+          if (ptIdx !== -1) {
+            if (r.points.length <= 3) {
+              alert('Обмеження повинно мати щонайменше 3 вершини.');
+              return;
+            }
+            const updatedPts = r.points.filter(p => p.id !== selectedPointId);
+            const updatedRestrictions = model.restrictions.map(item =>
+              item.id === r.id
+                ? { ...item, points: updatedPts, area: Math.round(calculatePolygonArea(updatedPts) * 10) / 10 }
+                : item
+            );
+            onUpdateModel({ restrictions: updatedRestrictions });
+            onSelectPoint(null);
+            return;
+          }
+        }
+
+        // 4. Check land use points
+        for (const lu of (model.landUseExplication || [])) {
+          if (lu.points) {
+            const ptIdx = lu.points.findIndex(p => p.id === selectedPointId);
+            if (ptIdx !== -1) {
+              if (lu.points.length <= 3) {
+                alert('Контур угіддя повинен мати щонайменше 3 вершини.');
+                return;
+              }
+              const updatedPts = lu.points.filter(p => p.id !== selectedPointId);
+              const updatedLu = (model.landUseExplication || []).map(item =>
+                item.id === lu.id
+                  ? { ...item, points: updatedPts, area: Math.round(calculatePolygonArea(updatedPts) * 10) / 10 }
+                  : item
+              );
+              onUpdateModel({ landUseExplication: updatedLu });
+              onSelectPoint(null);
+              return;
+            }
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedPointId, model, onUpdateModel, onSelectPoint]);
 
   // Bounding box computation
   const getAllPoints = (): Point[] => {
@@ -493,6 +617,160 @@ export default function InteractiveSvg({
           }
         }
       }
+    }
+
+    // Segment clicks: split segment and insert intermediate vertex
+    const CLICK_TOLERANCE_PX = 8;
+    let bestMatch: {
+      type: 'parcel' | 'building' | 'restriction' | 'land_use';
+      ownerId?: string;
+      insertIndex: number;
+      projU: number;
+      projV: number;
+    } | null = null;
+    let minSegDist = Infinity;
+
+    // A. Check parcel segments
+    if (model.points.length >= 3) {
+      for (let i = 0; i < model.points.length; i++) {
+        const p1 = model.points[i];
+        const p2 = model.points[(i + 1) % model.points.length];
+        const s1 = mapToScreen(p1.x, p1.y);
+        const s2 = mapToScreen(p2.x, p2.y);
+        
+        const { distance, x, y } = distanceToScreenSegment(clickU, clickV, s1.u, s1.v, s2.u, s2.v);
+        if (distance < CLICK_TOLERANCE_PX && distance < minSegDist) {
+          minSegDist = distance;
+          bestMatch = {
+            type: 'parcel',
+            insertIndex: i + 1,
+            projU: x,
+            projV: y,
+          };
+        }
+      }
+    }
+
+    // B. Check building segments
+    model.buildings.forEach((b) => {
+      if (b.points.length >= 3) {
+        for (let i = 0; i < b.points.length; i++) {
+          const p1 = b.points[i];
+          const p2 = b.points[(i + 1) % b.points.length];
+          const s1 = mapToScreen(p1.x, p1.y);
+          const s2 = mapToScreen(p2.x, p2.y);
+
+          const { distance, x, y } = distanceToScreenSegment(clickU, clickV, s1.u, s1.v, s2.u, s2.v);
+          if (distance < CLICK_TOLERANCE_PX && distance < minSegDist) {
+            minSegDist = distance;
+            bestMatch = {
+              type: 'building',
+              ownerId: b.id,
+              insertIndex: i + 1,
+              projU: x,
+              projV: y,
+            };
+          }
+        }
+      }
+    });
+
+    // C. Check restriction segments
+    model.restrictions.forEach((r) => {
+      if (r.points.length >= 3) {
+        for (let i = 0; i < r.points.length; i++) {
+          const p1 = r.points[i];
+          const p2 = r.points[(i + 1) % r.points.length];
+          const s1 = mapToScreen(p1.x, p1.y);
+          const s2 = mapToScreen(p2.x, p2.y);
+
+          const { distance, x, y } = distanceToScreenSegment(clickU, clickV, s1.u, s1.v, s2.u, s2.v);
+          if (distance < CLICK_TOLERANCE_PX && distance < minSegDist) {
+            minSegDist = distance;
+            bestMatch = {
+              type: 'restriction',
+              ownerId: r.id,
+              insertIndex: i + 1,
+              projU: x,
+              projV: y,
+            };
+          }
+        }
+      }
+    });
+
+    // D. Check land use segments
+    (model.landUseExplication || []).forEach((lu) => {
+      if (lu.points && lu.points.length >= 3) {
+        for (let i = 0; i < lu.points.length; i++) {
+          const p1 = lu.points[i];
+          const p2 = lu.points[(i + 1) % lu.points.length];
+          const s1 = mapToScreen(p1.x, p1.y);
+          const s2 = mapToScreen(p2.x, p2.y);
+
+          const { distance, x, y } = distanceToScreenSegment(clickU, clickV, s1.u, s1.v, s2.u, s2.v);
+          if (distance < CLICK_TOLERANCE_PX && distance < minSegDist) {
+            minSegDist = distance;
+            bestMatch = {
+              type: 'land_use',
+              ownerId: lu.id,
+              insertIndex: i + 1,
+              projU: x,
+              projV: y,
+            };
+          }
+        }
+      }
+    });
+
+    // If we matched an edge/segment, split it and insert a new point
+    if (bestMatch && !isDrawing) {
+      const geo = mapToGeodetic(bestMatch.projU, bestMatch.projV);
+      const newPtId = `split_${Date.now()}`;
+      const newPt: Point = {
+        id: newPtId,
+        x: geo.x,
+        y: geo.y,
+      };
+
+      if (bestMatch.type === 'parcel') {
+        const updated = [...model.points];
+        updated.splice(bestMatch.insertIndex, 0, newPt);
+        onUpdateModel({ points: updated });
+        onSelectPoint(newPtId);
+        setDraggedPoint({ type: 'parcel', id: newPtId, index: bestMatch.insertIndex });
+      } else if (bestMatch.type === 'building') {
+        const b = model.buildings.find(item => item.id === bestMatch!.ownerId)!;
+        const updatedPts = [...b.points];
+        updatedPts.splice(bestMatch.insertIndex, 0, newPt);
+        const updated = model.buildings.map(item =>
+          item.id === b.id ? { ...item, points: updatedPts, area: Math.round(calculatePolygonArea(updatedPts) * 10) / 10 } : item
+        );
+        onUpdateModel({ buildings: updated });
+        onSelectPoint(newPtId);
+        setDraggedPoint({ type: 'building', id: b.id, index: bestMatch.insertIndex });
+      } else if (bestMatch.type === 'restriction') {
+        const r = model.restrictions.find(item => item.id === bestMatch!.ownerId)!;
+        const updatedPts = [...r.points];
+        updatedPts.splice(bestMatch.insertIndex, 0, newPt);
+        const updated = model.restrictions.map(item =>
+          item.id === r.id ? { ...item, points: updatedPts, area: Math.round(calculatePolygonArea(updatedPts) * 10) / 10 } : item
+        );
+        onUpdateModel({ restrictions: updated });
+        onSelectPoint(newPtId);
+        setDraggedPoint({ type: 'restriction', id: r.id, index: bestMatch.insertIndex });
+      } else if (bestMatch.type === 'land_use') {
+        const lu = model.landUseExplication.find(item => item.id === bestMatch!.ownerId)!;
+        const updatedPts = [...lu.points!];
+        updatedPts.splice(bestMatch.insertIndex, 0, newPt);
+        const updated = model.landUseExplication.map(item =>
+          item.id === lu.id ? { ...item, points: updatedPts, area: Math.round(calculatePolygonArea(updatedPts) * 10) / 10 } : item
+        );
+        onUpdateModel({ landUseExplication: updated });
+        onSelectPoint(newPtId);
+        setDraggedPoint({ type: 'land_use', id: lu.id, index: bestMatch.insertIndex });
+      }
+      return; // Stop processing and start dragging split point immediately
     }
 
     if (isDrawing) {
@@ -1273,7 +1551,7 @@ export default function InteractiveSvg({
                 fill={isSelected ? '#2563eb' : '#ffffff'}
                 stroke={isSelected ? '#1d4ed8' : '#3b82f6'}
                 strokeWidth={isSelected ? '3' : '2'}
-                className="transition-transform duration-100 group-hover:scale-125 shadow-md"
+                className="group-hover:fill-blue-50 group-hover:stroke-blue-750 shadow-md transition-colors duration-150"
               />
               <text
                 x={u}
