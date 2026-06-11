@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-15 -25 30 40" width="30" height="40">
+  <circle cx="0" cy="0" r="14" fill="none" stroke="black" stroke-width="0.75" />
+  <line x1="0" y1="14" x2="0" y2="-14" stroke="black" stroke-width="1" />
+  <polygon points="0,-14 -4,-2 4,-2" fill="black" />
+  <text x="-3" y="-17" font-size="8" font-family="sans-serif" font-weight="bold">Пн</text>
+</svg>

@@ -1,7 +1,9 @@
 import React, { useRef, useState } from 'react';
-import { CadastralModel, Point, GeoJSONDocument, GeoJSONFeature } from '../types';
-import { projectLatLngToMetric, projectMetricToLatLng, calculateCentroid, calculatePolygonArea } from '../utils/geo';
-import { Upload, Download, FileJson, FileCode, Check, AlertCircle } from 'lucide-react';
+import { CadastralModel, Point, GeoJSONDocument, GeoJSONFeature } from '../../types';
+import { projectLatLngToMetric, projectMetricToLatLng, calculateCentroid, calculatePolygonArea } from '../../utils/geo';
+import { Upload, Check, AlertCircle } from 'lucide-react';
+import DragDropZone from './DragDropZone';
+import ExportActions from './ExportActions';
 
 interface GeoJSONImporterProps {
   model: CadastralModel;
@@ -21,7 +23,6 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
       let buildingFeatures: any[] = [];
       let restrictionFeatures: any[] = [];
 
-      // Find suitable features
       const features = geojson.features || (geojson.type === 'Feature' ? [geojson] : []);
 
       if (features.length === 0) {
@@ -33,16 +34,14 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
         const props = feat.properties || {};
 
         if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
-          // Categorize based on property helpers or just take the first as main parcel
           if (props.type === 'building' || props.building || String(props.name).toLowerCase().includes('буд')) {
             buildingFeatures.push(feat);
           } else if (props.type === 'restriction' || props.restriction || String(props.name).toLowerCase().includes('обмеж')) {
             restrictionFeatures.push(feat);
           } else {
             if (!polygonFeature) {
-              polygonFeature = feat; // first polygon is assumed to be the parcel
+              polygonFeature = feat;
             } else {
-              // subsequent polygons default to structures/other lines
               buildingFeatures.push(feat);
             }
           }
@@ -50,7 +49,6 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
       });
 
       if (!polygonFeature) {
-        // Fallback: search for any polygon
         const anyPolygon = features.find((f: any) => f.geometry?.type === 'Polygon' || f.geometry?.type === 'MultiPolygon');
         if (anyPolygon) {
           polygonFeature = anyPolygon;
@@ -59,16 +57,14 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
         }
       }
 
-      // Extract coords
       const mainGeom = polygonFeature.geometry;
       let rawCoords: [number, number][] = [];
       if (mainGeom.type === 'Polygon') {
-        rawCoords = mainGeom.coordinates[0]; // first ring
+        rawCoords = mainGeom.coordinates[0];
       } else if (mainGeom.type === 'MultiPolygon') {
-        rawCoords = mainGeom.coordinates[0][0]; // first ring of first polygon
+        rawCoords = mainGeom.coordinates[0][0];
       }
 
-      // Land plots closed ring usually duplicates first point at the end. Slice it out so we have unique points list
       if (rawCoords.length > 3) {
         const first = rawCoords[0];
         const last = rawCoords[rawCoords.length - 1];
@@ -77,13 +73,11 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
         }
       }
 
-      // Compute centroid of imported WGS-84 coordinates
       const lats = rawCoords.map(c => c[1]);
       const lngs = rawCoords.map(c => c[0]);
       const refLat = lats.reduce((a, b) => a + b, 0) / lats.length;
       const refLng = lngs.reduce((a, b) => a + b, 0) / lngs.length;
 
-      // Project into clean local meters coordinates
       const points: Point[] = rawCoords.map((coord, idx) => {
         const [lng, lat] = coord;
         const metric = projectLatLngToMetric(lat, lng, refLat, refLng);
@@ -96,7 +90,6 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
         };
       });
 
-      // Parse buildings if present
       const importedBuildings = buildingFeatures.map((bFeat: any, bIdx) => {
         let bCoords: [number, number][] = [];
         if (bFeat.geometry.type === 'Polygon') bCoords = bFeat.geometry.coordinates[0];
@@ -129,7 +122,6 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
         };
       });
 
-      // Parse restrictions if present
       const importedRestrictions = restrictionFeatures.map((rFeat: any, rIdx) => {
         let rCoords: [number, number][] = [];
         if (rFeat.geometry.type === 'Polygon') rCoords = rFeat.geometry.coordinates[0];
@@ -164,7 +156,6 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
         };
       });
 
-      // Update model
       onUpdateModel({
         points,
         buildings: importedBuildings.length ? importedBuildings : model.buildings,
@@ -177,7 +168,7 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
 
       setFeedback({
         status: 'success',
-        message: `Геометрію імпортовано успішно! Знайдено ${points.length} вершин межі земельної ділянки.`
+        message: `Геометрію імпортовано успішно! Знайдено ${points.length} вершин меж земельної ділянки.`
       });
     } catch (err: any) {
       setFeedback({
@@ -187,7 +178,6 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
     }
   };
 
-  // Upload actions
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -230,23 +220,19 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
 
   // EXPORT 1: GeoJSON Download
   const exportToGeoJSON = () => {
-    // Generate centroid of currently edited points. We'll project coordinates to Lat/Lng
-    const center = calculateCentroid(model.points);
-    // Arbitrary default geographic center (e.g. Center of Kiev suburb) if none present in points
     const refLat = model.points.find(p => p.lat)?.lat || 50.3124;
     const refLng = model.points.find(p => p.lng)?.lng || 30.6548;
 
     const transformPointsToLatLng = (pts: Point[]) => {
       return pts.map(p => {
         const actualGeo = projectMetricToLatLng(p.x, p.y, refLat, refLng);
-        return [actualGeo.lng, actualGeo.lat]; // GeoJSON orders [lng, lat]
+        return [actualGeo.lng, actualGeo.lat];
       });
     };
 
-    // Parcel polygon ring (must close with identical first coordinate)
     const parcelCoords = transformPointsToLatLng(model.points);
     if (parcelCoords.length > 0) {
-      parcelCoords.push(parcelCoords[0]); // close the loop
+      parcelCoords.push(parcelCoords[0]);
     }
 
     const features: GeoJSONFeature[] = [
@@ -271,7 +257,6 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
       }
     ];
 
-    // Export buildings
     model.buildings.forEach((b, bIdx) => {
       const bCoords = transformPointsToLatLng(b.points);
       if (bCoords.length > 0) {
@@ -292,7 +277,6 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
       }
     });
 
-    // Export restrictions
     model.restrictions.forEach((r, rIdx) => {
       const rCoords = transformPointsToLatLng(r.points);
       if (rCoords.length > 0) {
@@ -331,13 +315,12 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
     URL.revokeObjectURL(url);
   };
 
-  // EXPORT 2: XML Cadastral Exchange File (Обмінний XML файл кадастру)
+  // EXPORT 2: XML Cadastral Exchange File
   const exportToXML = () => {
     const totalAreaSqM = calculatePolygonArea(model.points);
     const dateFormatted = model.surveyDate || new Date().toISOString().split('T')[0];
 
     const generateXMLString = (): string => {
-      // Build points representation XML
       const pointsXML = model.points.map((p, idx) => `
         <Point id="P_${idx + 1}">
           <PointNumber>${idx + 1}</PointNumber>
@@ -435,32 +418,13 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
         <span className="text-sm font-bold text-slate-800">Імпорт та Експорт файлів геометрії</span>
       </div>
 
-      {/* Drag & Drop Area */}
-      <div
-        id="geojson_drop_zone"
-        onDragEnter={handleDrag}
-        onDragOver={handleDrag}
-        onDragLeave={handleDrag}
+      <DragDropZone
+        fileInputRef={fileInputRef}
+        dragActive={dragActive}
+        onDrag={handleDrag}
         onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
-        className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all ${dragActive ? 'border-emerald-500 bg-emerald-50/50' : 'border-slate-200 hover:border-slate-350 bg-slate-50/40'}`}
-      >
-        <input
-          id="geojson_file_input"
-          ref={fileInputRef}
-          type="file"
-          accept=".geojson,.json"
-          onChange={handleFileChange}
-          className="hidden"
-        />
-        <Upload className="h-7 w-7 text-slate-400 mx-auto mb-2" />
-        <span className="text-xs font-semibold text-slate-700 block">
-          Перетягніть GeoJSON файл сюди або клікніть
-        </span>
-        <span className="text-[10px] text-slate-500 block mt-1">
-          Підтримуються файли полігонів .geojson або .json (WGS-84)
-        </span>
-      </div>
+        onFileChange={handleFileChange}
+      />
 
       {feedback && (
         <div
@@ -476,28 +440,10 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
         </div>
       )}
 
-      {/* Action buttons for Download */}
-      <div className="grid grid-cols-2 gap-3 pt-1">
-        <button
-          id="export_geojson_btn"
-          onClick={exportToGeoJSON}
-          className="flex items-center justify-center gap-1.5 p-2 bg-slate-800 hover:bg-slate-900 border border-slate-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-xs"
-          title="Скачати геометрію та атрибути в GEOJSON"
-        >
-          <FileJson className="h-4 w-4" />
-          <span>Експорт GeoJSON</span>
-        </button>
-
-        <button
-          id="export_xml_btn"
-          onClick={exportToXML}
-          className="flex items-center justify-center gap-1.5 p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-xs"
-          title="Завантажити обмінний файл XML для системи ДЗК"
-        >
-          <FileCode className="h-4 w-4" />
-          <span>Обмінний XML ГІС</span>
-        </button>
-      </div>
+      <ExportActions
+        onExportGeoJSON={exportToGeoJSON}
+        onExportXML={exportToXML}
+      />
     </div>
   );
 }
