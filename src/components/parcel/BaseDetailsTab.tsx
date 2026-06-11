@@ -28,7 +28,7 @@ export default function BaseDetailsTab({ model, onUpdateModel }: BaseDetailsTabP
     <div className="space-y-4 font-sans animate-fade-in" id="form_tab_base">
       <h3 className="font-extrabold text-sm text-slate-800 border-b pb-1">Параметри земельної ділянки</h3>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <div className="space-y-1 block">
           <label className="font-bold text-slate-600" htmlFor="meta_cad_num">Кадастровий номер</label>
           <input
@@ -87,8 +87,8 @@ export default function BaseDetailsTab({ model, onUpdateModel }: BaseDetailsTabP
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="space-y-1 block md:col-span-1">
+      <div className="grid grid-cols-1 gap-4">
+        <div className="space-y-1 block">
           <label className="font-bold text-slate-600" htmlFor="meta_purpose_code">Код КВЦПЗ</label>
           <input
             id="meta_purpose_code"
@@ -100,7 +100,7 @@ export default function BaseDetailsTab({ model, onUpdateModel }: BaseDetailsTabP
           />
         </div>
 
-        <div className="space-y-1 block md:col-span-2">
+        <div className="space-y-1 block">
           <label className="font-bold text-slate-600" htmlFor="meta_category">Категорія земель</label>
           <input
             id="meta_category"

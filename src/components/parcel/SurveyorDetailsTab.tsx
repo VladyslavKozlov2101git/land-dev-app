@@ -23,7 +23,7 @@ export default function SurveyorDetailsTab({ model, onUpdateModel }: SurveyorDet
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <div className="space-y-1 block">
           <label className="font-bold text-slate-600" htmlFor="sv_cert">Номер та серія кваліфікаційного сертифіката</label>
           <input
@@ -49,7 +49,7 @@ export default function SurveyorDetailsTab({ model, onUpdateModel }: SurveyorDet
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t pt-3">
+      <div className="grid grid-cols-1 gap-4 border-t pt-3">
         <div className="space-y-1 block">
           <label className="font-bold text-slate-600" htmlFor="sv_system">Геодезична система</label>
           <select

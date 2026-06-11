@@ -19,7 +19,7 @@ export default function DrrpDetailsTab({ model, onUpdateModel }: DrrpDetailsTabP
         Дані з Реєстру речових прав на нерухоме майно, необхідні для формування повного витягу під ключ та погодження меж.
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <div className="space-y-1 block">
           <label className="font-bold text-slate-600" htmlFor="drrp_reg_num">Реєстраційний номер об'єкта</label>
           <input
@@ -45,7 +45,7 @@ export default function DrrpDetailsTab({ model, onUpdateModel }: DrrpDetailsTabP
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <div className="space-y-1 block">
           <label className="font-bold text-slate-600" htmlFor="drrp_dec_num">Номер рішення реєстратора</label>
           <input
