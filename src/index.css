@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Custom fade-in animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+/* Hard reset print configurations for standard layout */
+@media print {
+  /* Hide overall screen layout wrapper */
+  body, html {
+    background-color: white !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Only display the print pages scroll container content */
+  #root > :not(#print_modal_overlay) {
+    display: none !important;
+  }
+
+  #print_modal_overlay {
+    position: static !important;
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    display: block !important;
+    z-index: auto !important;
+    backdrop-filter: none !important;
+  }
+
+  /* Hide print buttons and modals controls */
+  .print\:hidden {
+    display: none !important;
+  }
+
+  #cadastral_pages_scroll_area {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .print\:break-after-page {
+    page-break-after: always !important;
+    break-after: page !important;
+    margin-top: 0 !important;
+    padding-top: 2cm !important;
+    padding-bottom: 2cm !important;
+    min-height: auto !important;
+  }
+
+  /* Force background grays to disappear */
+  .bg-slate-50, .bg-slate-100, .bg-slate-200 {
+    background-color: white !important;
+  }
+
+  /* High contrast labels */
+  text, p, span, td, th {
+    color: black !important;
+  }
+}
