@@ -186,25 +186,23 @@ export default function RestrictionsList({
 
                 {isActive && (
                   <div className="p-3 bg-white space-y-3 border-t border-slate-50">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                      <div className="space-y-1 block md:col-span-1">
-                        <label className="font-semibold text-slate-500">Код КВЗ:</label>
-                        <input
-                          type="text"
-                          value={r.code}
-                          onChange={(e) => handleUpdateRestrictionField(r.id, 'code', e.target.value)}
-                          className="w-full text-center px-2 py-1 bg-slate-50 border border-slate-200 focus:outline-none focus:border-amber-400 rounded text-xs text-slate-800 font-mono"
-                        />
-                      </div>
-                      <div className="space-y-1 block md:col-span-3">
-                        <label className="font-semibold text-slate-500">Опис обмеження:</label>
-                        <input
-                          type="text"
-                          value={r.name}
-                          onChange={(e) => handleUpdateRestrictionField(r.id, 'name', e.target.value)}
-                          className="w-full px-2 py-1 bg-slate-50 border border-slate-200 focus:outline-none focus:border-amber-400 rounded text-xs text-slate-800 font-medium"
-                        />
-                      </div>
+                    <div className="space-y-1 block">
+                      <label className="font-semibold text-slate-500">Код КВЗ:</label>
+                      <input
+                        type="text"
+                        value={r.code}
+                        onChange={(e) => handleUpdateRestrictionField(r.id, 'code', e.target.value)}
+                        className="w-full px-2 py-1 bg-slate-50 border border-slate-200 focus:outline-none focus:border-amber-400 rounded text-xs text-slate-800 font-mono"
+                      />
+                    </div>
+                    <div className="space-y-1 block">
+                      <label className="font-semibold text-slate-500">Опис обмеження:</label>
+                      <input
+                        type="text"
+                        value={r.name}
+                        onChange={(e) => handleUpdateRestrictionField(r.id, 'name', e.target.value)}
+                        className="w-full px-2 py-1 bg-slate-50 border border-slate-200 focus:outline-none focus:border-amber-400 rounded text-xs text-slate-800 font-medium"
+                      />
                     </div>
 
                     <div className="space-y-1 block">

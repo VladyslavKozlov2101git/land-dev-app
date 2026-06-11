@@ -24,7 +24,7 @@ export default function CanvasInventoryPanels({
   };
 
   return (
-    <div className="border-t border-slate-150 p-3 bg-slate-50 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-sans max-h-36 overflow-y-auto">
+    <div className="border-t border-slate-150 p-3 bg-slate-50 flex flex-col gap-4 text-xs font-sans max-h-36 overflow-y-auto">
       {/* Buildings Inventory list */}
       <div>
         <span className="font-bold text-slate-700 block mb-1">

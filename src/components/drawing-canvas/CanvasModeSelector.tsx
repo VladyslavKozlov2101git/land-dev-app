@@ -33,7 +33,7 @@ export default function CanvasModeSelector({
             onClearTempPoints();
           }}
           className={`px-2.5 py-1 rounded font-medium flex items-center gap-1.5 transition-all ${mode === 'ADD_BUILDING' ? 'bg-red-600 text-white' : 'bg-red-50 border border-red-200 text-red-700 hover:bg-red-100/50'}`}>
-          <Plus className="h-3.5 w-3.5" /> + Будівля
+          <Plus className="h-3.5 w-3.5" /> Будівля
         </button>
         <button
           id="mode_add_rest_btn"
@@ -42,7 +42,7 @@ export default function CanvasModeSelector({
             onClearTempPoints();
           }}
           className={`px-2.5 py-1 rounded font-medium flex items-center gap-1.5 transition-all ${mode === 'ADD_RESTRICTION' ? 'bg-amber-600 text-white' : 'bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100/50'}`}>
-          <Plus className="h-3.5 w-3.5" /> + Обмеження
+          <Plus className="h-3.5 w-3.5" /> Обмеження
         </button>
       </div>
 

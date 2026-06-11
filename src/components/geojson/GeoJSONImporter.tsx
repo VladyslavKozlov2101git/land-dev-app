@@ -1,6 +1,11 @@
 import React, { useRef, useState } from 'react';
 import { CadastralModel, Point, GeoJSONDocument, GeoJSONFeature } from '../../types';
-import { projectLatLngToMetric, projectMetricToLatLng, calculateCentroid, calculatePolygonArea } from '../../utils/geo';
+import {
+  projectLatLngToMetric,
+  projectMetricToLatLng,
+  calculateCentroid,
+  calculatePolygonArea,
+} from '../../utils/geo';
 import { Upload, Check, AlertCircle } from 'lucide-react';
 import DragDropZone from './DragDropZone';
 import ExportActions from './ExportActions';
@@ -13,7 +18,9 @@ interface GeoJSONImporterProps {
 export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporterProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
-  const [feedback, setFeedback] = useState<{ status: 'success' | 'error'; message: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ status: 'success' | 'error'; message: string } | null>(
+    null,
+  );
 
   // Parse GeoJSON
   const parseGeoJSONContent = (text: string) => {
@@ -34,9 +41,17 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
         const props = feat.properties || {};
 
         if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
-          if (props.type === 'building' || props.building || String(props.name).toLowerCase().includes('буд')) {
+          if (
+            props.type === 'building' ||
+            props.building ||
+            String(props.name).toLowerCase().includes('буд')
+          ) {
             buildingFeatures.push(feat);
-          } else if (props.type === 'restriction' || props.restriction || String(props.name).toLowerCase().includes('обмеж')) {
+          } else if (
+            props.type === 'restriction' ||
+            props.restriction ||
+            String(props.name).toLowerCase().includes('обмеж')
+          ) {
             restrictionFeatures.push(feat);
           } else {
             if (!polygonFeature) {
@@ -49,11 +64,15 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
       });
 
       if (!polygonFeature) {
-        const anyPolygon = features.find((f: any) => f.geometry?.type === 'Polygon' || f.geometry?.type === 'MultiPolygon');
+        const anyPolygon = features.find(
+          (f: any) => f.geometry?.type === 'Polygon' || f.geometry?.type === 'MultiPolygon',
+        );
         if (anyPolygon) {
           polygonFeature = anyPolygon;
         } else {
-          throw new Error("Файл GeoJSON має містити щонайменше один об'єкт типу 'Polygon' для відображення меж ділянки.");
+          throw new Error(
+            "Файл GeoJSON має містити щонайменше один об'єкт типу 'Polygon' для відображення меж ділянки.",
+          );
         }
       }
 
@@ -73,8 +92,8 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
         }
       }
 
-      const lats = rawCoords.map(c => c[1]);
-      const lngs = rawCoords.map(c => c[0]);
+      const lats = rawCoords.map((c) => c[1]);
+      const lngs = rawCoords.map((c) => c[0]);
       const refLat = lats.reduce((a, b) => a + b, 0) / lats.length;
       const refLng = lngs.reduce((a, b) => a + b, 0) / lngs.length;
 
@@ -86,7 +105,7 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
           x: metric.x,
           y: metric.y,
           lat: lat,
-          lng: lng
+          lng: lng,
         };
       });
 
@@ -94,11 +113,14 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
         let bCoords: [number, number][] = [];
         if (bFeat.geometry.type === 'Polygon') bCoords = bFeat.geometry.coordinates[0];
         else if (bFeat.geometry.type === 'MultiPolygon') bCoords = bFeat.geometry.coordinates[0][0];
-        
+
         if (bCoords.length > 3) {
           const first = bCoords[0];
           const last = bCoords[bCoords.length - 1];
-          if (Math.abs(first[0] - last[0]) < 0.0000001 && Math.abs(first[1] - last[1]) < 0.0000001) {
+          if (
+            Math.abs(first[0] - last[0]) < 0.0000001 &&
+            Math.abs(first[1] - last[1]) < 0.0000001
+          ) {
             bCoords = bCoords.slice(0, -1);
           }
         }
@@ -110,7 +132,7 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
             x: metric.x,
             y: metric.y,
             lat: bc[1],
-            lng: bc[0]
+            lng: bc[0],
           };
         });
 
@@ -118,7 +140,7 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
           id: `bld_${bIdx}_${Date.now()}`,
           name: bFeat.properties?.name || `Будівля ${bIdx + 1} (імпортовано)`,
           points: bPts,
-          area: Math.round(calculatePolygonArea(bPts) * 10) / 10
+          area: Math.round(calculatePolygonArea(bPts) * 10) / 10,
         };
       });
 
@@ -130,7 +152,10 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
         if (rCoords.length > 3) {
           const first = rCoords[0];
           const last = rCoords[rCoords.length - 1];
-          if (Math.abs(first[0] - last[0]) < 0.0000001 && Math.abs(first[1] - last[1]) < 0.0000001) {
+          if (
+            Math.abs(first[0] - last[0]) < 0.0000001 &&
+            Math.abs(first[1] - last[1]) < 0.0000001
+          ) {
             rCoords = rCoords.slice(0, -1);
           }
         }
@@ -142,7 +167,7 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
             x: metric.x,
             y: metric.y,
             lat: rc[1],
-            lng: rc[0]
+            lng: rc[0],
           };
         });
 
@@ -152,7 +177,7 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
           name: rFeat.properties?.name || `Охоронна зона (імпортовано)`,
           points: rPts,
           area: Math.round(calculatePolygonArea(rPts) * 10) / 10,
-          description: rFeat.properties?.description || 'Імпортовано з файлу GeoJSON.'
+          description: rFeat.properties?.description || 'Імпортовано з файлу GeoJSON.',
         };
       });
 
@@ -163,17 +188,17 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
         cadastralNumber: polygonFeature.properties?.cadastralNumber || model.cadastralNumber,
         address: polygonFeature.properties?.address || model.address,
         ownerName: polygonFeature.properties?.ownerName || model.ownerName,
-        ownerCode: polygonFeature.properties?.ownerCode || model.ownerCode
+        ownerCode: polygonFeature.properties?.ownerCode || model.ownerCode,
       });
 
       setFeedback({
         status: 'success',
-        message: `Геометрію імпортовано успішно! Знайдено ${points.length} вершин меж земельної ділянки.`
+        message: `Геометрію імпортовано успішно! Знайдено ${points.length} вершин меж земельної ділянки.`,
       });
     } catch (err: any) {
       setFeedback({
         status: 'error',
-        message: `Помилка читання GeoJSON: ${err.message}`
+        message: `Помилка читання GeoJSON: ${err.message}`,
       });
     }
   };
@@ -220,11 +245,11 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
 
   // EXPORT 1: GeoJSON Download
   const exportToGeoJSON = () => {
-    const refLat = model.points.find(p => p.lat)?.lat || 50.3124;
-    const refLng = model.points.find(p => p.lng)?.lng || 30.6548;
+    const refLat = model.points.find((p) => p.lat)?.lat || 50.3124;
+    const refLng = model.points.find((p) => p.lng)?.lng || 30.6548;
 
     const transformPointsToLatLng = (pts: Point[]) => {
-      return pts.map(p => {
+      return pts.map((p) => {
         const actualGeo = projectMetricToLatLng(p.x, p.y, refLat, refLng);
         return [actualGeo.lng, actualGeo.lat];
       });
@@ -240,7 +265,7 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
         type: 'Feature',
         geometry: {
           type: 'Polygon',
-          coordinates: [parcelCoords]
+          coordinates: [parcelCoords],
         },
         properties: {
           type: 'parcel',
@@ -252,9 +277,9 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
           purposeCode: model.purposeCode,
           purposeName: model.purposeName,
           category: model.category,
-          areaHectares: model.points.length >= 3 ? (calculatePolygonArea(model.points) / 10000) : 0
-        }
-      }
+          areaHectares: model.points.length >= 3 ? calculatePolygonArea(model.points) / 10000 : 0,
+        },
+      },
     ];
 
     model.buildings.forEach((b, bIdx) => {
@@ -265,14 +290,14 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
           type: 'Feature',
           geometry: {
             type: 'Polygon',
-            coordinates: [bCoords]
+            coordinates: [bCoords],
           },
           properties: {
             type: 'building',
             name: b.name,
             area: b.area,
-            index: bIdx
-          }
+            index: bIdx,
+          },
         });
       }
     });
@@ -285,7 +310,7 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
           type: 'Feature',
           geometry: {
             type: 'Polygon',
-            coordinates: [rCoords]
+            coordinates: [rCoords],
           },
           properties: {
             type: 'restriction',
@@ -293,15 +318,15 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
             name: r.name,
             area: r.area,
             description: r.description,
-            index: rIdx
-          }
+            index: rIdx,
+          },
         });
       }
     });
 
     const fileDocument: GeoJSONDocument = {
       type: 'FeatureCollection',
-      features
+      features,
     };
 
     const blob = new Blob([JSON.stringify(fileDocument, null, 2)], { type: 'application/json' });
@@ -321,21 +346,27 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
     const dateFormatted = model.surveyDate || new Date().toISOString().split('T')[0];
 
     const generateXMLString = (): string => {
-      const pointsXML = model.points.map((p, idx) => `
+      const pointsXML = model.points
+        .map(
+          (p, idx) => `
         <Point id="P_${idx + 1}">
           <PointNumber>${idx + 1}</PointNumber>
           <X>${p.x.toFixed(3)}</X>
           <Y>${p.y.toFixed(3)}</Y>
-        </Point>`).join('');
+        </Point>`,
+        )
+        .join('');
 
-      const boundariesXML = model.points.map((_, idx) => {
-        const next = (idx + 1) === model.points.length ? 1 : idx + 2;
-        return `
+      const boundariesXML = model.points
+        .map((_, idx) => {
+          const next = idx + 1 === model.points.length ? 1 : idx + 2;
+          return `
         <Boundary>
           <FromPoint>P_${idx + 1}</FromPoint>
           <ToPoint>P_${next}</ToPoint>
         </Boundary>`;
-      }).join('');
+        })
+        .join('');
 
       return `<?xml version="1.0" encoding="UTF-8"?>
 <CadastralExchangeFile xmlns="http://www.dzk.gov.ua/schemas/ExchangeFile">
@@ -412,10 +443,12 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-100 p-4 space-y-4" id="geojson_import_export_component">
+    <div
+      className="bg-white rounded-xl border border-slate-100 p-4 space-y-4"
+      id="geojson_import_export_component">
       <div className="flex items-center gap-2">
         <Upload className="h-4.5 w-4.5 text-emerald-600" />
-        <span className="text-sm font-bold text-slate-800">Імпорт та Експорт файлів геометрії</span>
+        <span className="text-sm font-bold text-slate-800">Імпорт та Експорт </span>
       </div>
 
       <DragDropZone
@@ -429,8 +462,7 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
       {feedback && (
         <div
           id="import_feedback_banner"
-          className={`p-3 rounded-lg flex items-start gap-2 text-xs font-medium ${feedback.status === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-100' : 'bg-red-50 text-red-800 border border-red-100'}`}
-        >
+          className={`p-3 rounded-lg flex items-start gap-2 text-xs font-medium ${feedback.status === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-100' : 'bg-red-50 text-red-800 border border-red-100'}`}>
           {feedback.status === 'success' ? (
             <Check className="h-4.5 w-4.5 shrink-0 text-emerald-600 mt-0.5" />
           ) : (
@@ -440,10 +472,7 @@ export default function GeoJSONImporter({ model, onUpdateModel }: GeoJSONImporte
         </div>
       )}
 
-      <ExportActions
-        onExportGeoJSON={exportToGeoJSON}
-        onExportXML={exportToXML}
-      />
+      <ExportActions onExportGeoJSON={exportToGeoJSON} onExportXML={exportToXML} />
     </div>
   );
 }

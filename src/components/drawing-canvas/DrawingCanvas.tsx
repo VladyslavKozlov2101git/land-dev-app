@@ -97,7 +97,9 @@ export default function DrawingCanvas({
         buildings: [...model.buildings, newBuilding],
       });
     } else if (mode === 'ADD_RESTRICTION') {
-      const name = tempName.trim() || `Охоронна зона інженерних комунікацій (№${model.restrictions.length + 1})`;
+      const name =
+        tempName.trim() ||
+        `Охоронна зона інженерних комунікацій (№${model.restrictions.length + 1})`;
       const newRestriction: Restriction = {
         id: `rest_${Date.now()}`,
         code: tempCode,
@@ -120,7 +122,6 @@ export default function DrawingCanvas({
     <div
       className="flex flex-col h-full bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden"
       id="cadastral_drawing_workspace">
-      
       <CanvasToolbar
         coordinateSystem={model.coordinateSystem}
         orthoMode={orthoMode}
@@ -153,7 +154,6 @@ export default function DrawingCanvas({
         ref={containerRef}
         className="relative flex-grow bg-slate-50 overflow-hidden cursor-crosshair select-none"
         id="cadastral_svg_interactive_panel">
-        
         <InteractiveSvg
           model={model}
           onUpdateModel={onUpdateModel}
@@ -178,24 +178,9 @@ export default function DrawingCanvas({
           hoverGeodetic={hoverGeodetic}
           setHoverGeodetic={setHoverGeodetic}
         />
-
-        <div className="absolute bottom-3 right-3 bg-slate-900/90 text-white p-2.5 rounded-lg border border-slate-700/60 max-w-[210px] pointer-events-none text-[10px] space-y-1 font-mono shadow-md backdrop-blur-xs">
-          <div className="text-blue-400 font-semibold mb-1">КЕРУВАННЯ СХЕМОЮ:</div>
-          <div>• Перетягуйте точки мишкою</div>
-          <div>• Прокрутка / мишка — зсув плану</div>
-          <div>• Клік на точку покаже у списку</div>
-          <div className="text-slate-400 block pt-1 border-t border-slate-700 mt-1">
-            Колонка X — Північ (Вгору)
-            <br />
-            Колонка Y — Схід (Вправо)
-          </div>
-        </div>
       </div>
 
-      <CanvasInventoryPanels
-        model={model}
-        onUpdateModel={onUpdateModel}
-      />
+      <CanvasInventoryPanels model={model} onUpdateModel={onUpdateModel} />
     </div>
   );
 }
