@@ -162,49 +162,56 @@ export default function InteractiveSvg({
           return;
         }
 
-        // 2. Check buildings points
-        for (const b of model.buildings) {
-          const ptIdx = b.points.findIndex(p => p.id === selectedPointId);
-          if (ptIdx !== -1) {
-            if (b.points.length <= 3) {
-              alert('Споруда повинна мати щонайменше 3 вершини.');
+        // 2. Check buildings points (only if building is the active geozone)
+        if (activeGeozone?.type === 'building') {
+          const b = model.buildings.find(item => item.id === activeGeozone.id);
+          if (b) {
+            const ptIdx = b.points.findIndex(p => p.id === selectedPointId);
+            if (ptIdx !== -1) {
+              if (b.points.length <= 3) {
+                alert('Споруда повинна мати щонайменше 3 вершини.');
+                return;
+              }
+              const updatedPts = b.points.filter(p => p.id !== selectedPointId);
+              const updatedBuildings = model.buildings.map(item =>
+                item.id === b.id
+                  ? { ...item, points: updatedPts, area: Math.round(calculatePolygonArea(updatedPts) * 10) / 10 }
+                  : item
+              );
+              onUpdateModel({ buildings: updatedBuildings });
+              onSelectPoint(null);
               return;
             }
-            const updatedPts = b.points.filter(p => p.id !== selectedPointId);
-            const updatedBuildings = model.buildings.map(item =>
-              item.id === b.id
-                ? { ...item, points: updatedPts, area: Math.round(calculatePolygonArea(updatedPts) * 10) / 10 }
-                : item
-            );
-            onUpdateModel({ buildings: updatedBuildings });
-            onSelectPoint(null);
-            return;
           }
         }
 
-        // 3. Check restrictions points
-        for (const r of model.restrictions) {
-          const ptIdx = r.points.findIndex(p => p.id === selectedPointId);
-          if (ptIdx !== -1) {
-            if (r.points.length <= 3) {
-              alert('Обмеження повинно мати щонайменше 3 вершини.');
+        // 3. Check restrictions points (only if restriction is the active geozone)
+        if (activeGeozone?.type === 'restriction') {
+          const r = model.restrictions.find(item => item.id === activeGeozone.id);
+          if (r) {
+            const ptIdx = r.points.findIndex(p => p.id === selectedPointId);
+            if (ptIdx !== -1) {
+              if (r.points.length <= 3) {
+                alert('Обмеження повинно мати щонайменше 3 вершини.');
+                return;
+              }
+              const updatedPts = r.points.filter(p => p.id !== selectedPointId);
+              const updatedRestrictions = model.restrictions.map(item =>
+                item.id === r.id
+                  ? { ...item, points: updatedPts, area: Math.round(calculatePolygonArea(updatedPts) * 10) / 10 }
+                  : item
+              );
+              onUpdateModel({ restrictions: updatedRestrictions });
+              onSelectPoint(null);
               return;
             }
-            const updatedPts = r.points.filter(p => p.id !== selectedPointId);
-            const updatedRestrictions = model.restrictions.map(item =>
-              item.id === r.id
-                ? { ...item, points: updatedPts, area: Math.round(calculatePolygonArea(updatedPts) * 10) / 10 }
-                : item
-            );
-            onUpdateModel({ restrictions: updatedRestrictions });
-            onSelectPoint(null);
-            return;
           }
         }
 
-        // 4. Check land use points
-        for (const lu of (model.landUseExplication || [])) {
-          if (lu.points) {
+        // 4. Check land use points (only if land_use is the active geozone)
+        if (activeGeozone?.type === 'land_use') {
+          const lu = (model.landUseExplication || []).find(item => item.id === activeGeozone.id);
+          if (lu && lu.points) {
             const ptIdx = lu.points.findIndex(p => p.id === selectedPointId);
             if (ptIdx !== -1) {
               if (lu.points.length <= 3) {
@@ -269,6 +276,7 @@ export default function InteractiveSvg({
             const dist = Math.sqrt((u - clickU) ** 2 + (v - clickV) ** 2);
             if (dist < 10) {
               setDraggedPoint({ type: 'building', id: b.id, index: pIdx });
+              onSelectPoint(p.id);
               return;
             }
           }
@@ -282,6 +290,7 @@ export default function InteractiveSvg({
             const dist = Math.sqrt((u - clickU) ** 2 + (v - clickV) ** 2);
             if (dist < 10) {
               setDraggedPoint({ type: 'restriction', id: r.id, index: pIdx });
+              onSelectPoint(p.id);
               return;
             }
           }
@@ -295,6 +304,7 @@ export default function InteractiveSvg({
             const dist = Math.sqrt((u - clickU) ** 2 + (v - clickV) ** 2);
             if (dist < 10) {
               setDraggedPoint({ type: 'land_use', id: lu.id, index: pIdx });
+              onSelectPoint(p.id);
               return;
             }
           }
