@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CadastralModel } from '../../types';
+import { CadastralModel, ActiveGeozone } from '../../types';
 import { Home, ChevronDown, ChevronUp } from 'lucide-react';
 import BuildingsList from './BuildingsList';
 import RestrictionsList from './RestrictionsList';
@@ -9,6 +9,8 @@ interface BuildingsRestrictionsEditorProps {
   onUpdateModel: (updates: Partial<CadastralModel>) => void;
   selectedPointId: string | null;
   onSelectPoint: (id: string | null) => void;
+  activeGeozone: ActiveGeozone | null;
+  onActiveGeozoneChange: (val: ActiveGeozone | null) => void;
 }
 
 export default function BuildingsRestrictionsEditor({
@@ -16,10 +18,21 @@ export default function BuildingsRestrictionsEditor({
   onUpdateModel,
   selectedPointId,
   onSelectPoint,
+  activeGeozone,
+  onActiveGeozoneChange,
 }: BuildingsRestrictionsEditorProps) {
   const [isOpen, setIsOpen] = useState(true);
-  const [activeBuildingId, setActiveBuildingId] = useState<string | null>(null);
-  const [activeRestrictionId, setActiveRestrictionId] = useState<string | null>(null);
+
+  const activeBuildingId = activeGeozone?.type === 'building' ? activeGeozone.id : null;
+  const activeRestrictionId = activeGeozone?.type === 'restriction' ? activeGeozone.id : null;
+
+  const setActiveBuildingId = (id: string | null) => {
+    onActiveGeozoneChange(id ? { type: 'building', id } : null);
+  };
+
+  const setActiveRestrictionId = (id: string | null) => {
+    onActiveGeozoneChange(id ? { type: 'restriction', id } : null);
+  };
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden" id="buildings_restrictions_editor_block">

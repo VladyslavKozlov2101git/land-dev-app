@@ -1,17 +1,22 @@
 import React from 'react';
-import { Point, CadastralModel } from '../../../types';
+import { Point, CadastralModel, ActiveGeozone } from '../../../types';
 
 interface ParcelVerticesLayerProps {
   model: CadastralModel;
   selectedPointId: string | null;
   mapToScreen: (x: number, y: number) => { u: number; v: number };
+  activeGeozone: ActiveGeozone | null;
 }
 
 export default function ParcelVerticesLayer({
   model,
   selectedPointId,
   mapToScreen,
+  activeGeozone,
 }: ParcelVerticesLayerProps) {
+  const isActive = activeGeozone?.type === 'parcel';
+  if (!isActive) return null;
+
   return (
     <g id="svg_parcel_vertices">
       {model.points.map((p, index) => {

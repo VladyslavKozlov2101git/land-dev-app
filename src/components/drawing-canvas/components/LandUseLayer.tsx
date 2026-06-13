@@ -1,13 +1,22 @@
-import React from 'react';
-import { Point, CadastralModel } from '../../../types';
+import React, { useState } from 'react';
+import { Point, CadastralModel, ActiveGeozone } from '../../../types';
 import { calculateCentroid, isPolygonInsidePolygon } from '../../../utils/geo';
 
 interface LandUseLayerProps {
   model: CadastralModel;
   mapToScreen: (x: number, y: number) => { u: number; v: number };
+  activeGeozone: ActiveGeozone | null;
+  onActiveGeozoneChange: (val: ActiveGeozone | null) => void;
 }
 
-export default function LandUseLayer({ model, mapToScreen }: LandUseLayerProps) {
+export default function LandUseLayer({
+  model,
+  mapToScreen,
+  activeGeozone,
+  onActiveGeozoneChange,
+}: LandUseLayerProps) {
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+
   const getPointsPolygonPath = (pts: Point[]): string => {
     if (pts.length === 0) return '';
     const mapped = pts.map((p) => {
@@ -22,6 +31,16 @@ export default function LandUseLayer({ model, mapToScreen }: LandUseLayerProps) 
     return isPolygonInsidePolygon(pts, model.points);
   };
 
+  const handleMouseDown = (e: React.MouseEvent, landUseId: string) => {
+    (e.nativeEvent as any)._clickedGeozone = true;
+    const isActive = activeGeozone?.type === 'land_use' && activeGeozone.id === landUseId;
+
+    if (!isActive) {
+      onActiveGeozoneChange({ type: 'land_use', id: landUseId });
+      e.stopPropagation(); // Prevent panning and reset
+    }
+  };
+
   return (
     <g id="svg_land_use_layer">
       {(model.landUseExplication || []).map((lu) => {
@@ -30,19 +49,28 @@ export default function LandUseLayer({ model, mapToScreen }: LandUseLayerProps) 
         if (!pathStr) return null;
 
         const isInside = isLandUseInside(lu.points);
+        const isActive = activeGeozone?.type === 'land_use' && activeGeozone.id === lu.id;
+        const isHovered = hoveredId === lu.id;
 
         return (
           <g
             id={`svg_lu_g_${lu.id}`}
             key={lu.id}
-            className="opacity-70 hover:opacity-90 transition-opacity"
+            onMouseEnter={() => setHoveredId(lu.id)}
+            onMouseLeave={() => setHoveredId(null)}
+            onMouseDown={(e) => handleMouseDown(e, lu.id)}
+            className={`cursor-pointer transition-all duration-150 ${isActive ? 'opacity-100' : isHovered ? 'opacity-95' : 'opacity-70'}`}
           >
             <path
               d={pathStr}
               fill={isInside ? "url(#striped-emerald-pattern)" : "url(#striped-red-pattern)"}
-              stroke={isInside ? "#10b981" : "#dc2626"}
-              strokeWidth="1.5"
-              strokeDasharray="5 3"
+              stroke={isActive ? "#065f46" : isHovered ? "#10b981" : (isInside ? "#10b981" : "#dc2626")}
+              strokeWidth={isActive ? "4.5" : isHovered ? "3.5" : "1.5"}
+              strokeDasharray={isActive ? "0" : "5 3"}
+              className="transition-all duration-150"
+              style={{
+                filter: isActive ? 'drop-shadow(0 0 6px rgba(16, 185, 129, 0.5))' : 'none',
+              }}
             />
             {(() => {
               const centroid = calculateCentroid(lu.points!);
@@ -56,12 +84,12 @@ export default function LandUseLayer({ model, mapToScreen }: LandUseLayerProps) 
                     height="20"
                     rx="3"
                     fill={isInside ? "#ecfdf5" : "#fef2f2"}
-                    stroke={isInside ? "#10b981" : "#ef4444"}
-                    strokeWidth="0.5"
-                    className="opacity-90"
+                    stroke={isActive ? "#065f46" : isHovered ? "#10b981" : (isInside ? "#10b981" : "#ef4444")}
+                    strokeWidth={isActive ? "1.5" : isHovered ? "1" : "0.5"}
+                    className="opacity-90 shadow-2xs"
                   />
                   <text
-                    className={`${isInside ? 'fill-emerald-900' : 'fill-red-950'} font-extrabold font-mono text-[8.5px]`}
+                    className={`${isInside ? 'fill-emerald-900 font-bold' : 'fill-red-950 font-black'} font-extrabold font-mono text-[8.5px]`}
                     textAnchor="middle"
                     y="3.5"
                   >

@@ -92,3 +92,9 @@ export interface GeoJSONDocument {
 }
 
 export type DrawMode = 'VIEW' | 'EDIT_PARCEL' | 'ADD_BUILDING' | 'ADD_RESTRICTION' | 'ADD_LAND_USE';
+
+export interface ActiveGeozone {
+  type: 'parcel' | 'building' | 'restriction' | 'land_use';
+  id: string; // 'parcel' for parcel, or building/restriction/landuse ID
+}
+

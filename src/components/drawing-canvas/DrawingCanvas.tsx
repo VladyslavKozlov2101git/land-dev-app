@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Point, CadastralModel, Building, Restriction, DrawMode, LandUseExplication } from '../../types';
+import { Point, CadastralModel, Building, Restriction, DrawMode, LandUseExplication, ActiveGeozone } from '../../types';
 import CanvasToolbar from './CanvasToolbar';
 import CanvasModeSelector from './CanvasModeSelector';
 import CanvasDrawOverlay from './CanvasDrawOverlay';
@@ -11,6 +11,8 @@ interface DrawingCanvasProps {
   onUpdateModel: (updates: Partial<CadastralModel>) => void;
   selectedPointId: string | null;
   onSelectPoint: (id: string | null) => void;
+  activeGeozone: ActiveGeozone | null;
+  onActiveGeozoneChange: (val: ActiveGeozone | null) => void;
 }
 
 export default function DrawingCanvas({
@@ -18,6 +20,8 @@ export default function DrawingCanvas({
   onUpdateModel,
   selectedPointId,
   onSelectPoint,
+  activeGeozone,
+  onActiveGeozoneChange,
 }: DrawingCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [mode, setMode] = useState<DrawMode>('VIEW');
@@ -170,6 +174,8 @@ export default function DrawingCanvas({
           onUpdateModel={onUpdateModel}
           selectedPointId={selectedPointId}
           onSelectPoint={onSelectPoint}
+          activeGeozone={activeGeozone}
+          onActiveGeozoneChange={onActiveGeozoneChange}
           mode={mode}
           zoom={zoom}
           setZoom={setZoom}
@@ -192,7 +198,12 @@ export default function DrawingCanvas({
         />
       </div>
 
-      <CanvasInventoryPanels model={model} onUpdateModel={onUpdateModel} />
+      <CanvasInventoryPanels
+        model={model}
+        onUpdateModel={onUpdateModel}
+        activeGeozone={activeGeozone}
+        onActiveGeozoneChange={onActiveGeozoneChange}
+      />
     </div>
   );
 }

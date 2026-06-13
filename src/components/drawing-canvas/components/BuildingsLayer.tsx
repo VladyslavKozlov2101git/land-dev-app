@@ -1,13 +1,22 @@
-import React from 'react';
-import { Point, CadastralModel, Building } from '../../../types';
+import React, { useState } from 'react';
+import { Point, CadastralModel, Building, ActiveGeozone } from '../../../types';
 import { calculateCentroid, isPolygonInsidePolygon, doPolygonsOverlap } from '../../../utils/geo';
 
 interface BuildingsLayerProps {
   model: CadastralModel;
   mapToScreen: (x: number, y: number) => { u: number; v: number };
+  activeGeozone: ActiveGeozone | null;
+  onActiveGeozoneChange: (val: ActiveGeozone | null) => void;
 }
 
-export default function BuildingsLayer({ model, mapToScreen }: BuildingsLayerProps) {
+export default function BuildingsLayer({
+  model,
+  mapToScreen,
+  activeGeozone,
+  onActiveGeozoneChange,
+}: BuildingsLayerProps) {
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+
   const getPointsPolygonPath = (pts: Point[]): string => {
     if (pts.length === 0) return '';
     const mapped = pts.map((p) => {
@@ -19,6 +28,16 @@ export default function BuildingsLayer({ model, mapToScreen }: BuildingsLayerPro
 
   const isBuildingInside = (b: Building) => {
     return isPolygonInsidePolygon(b.points, model.points);
+  };
+
+  const handleMouseDown = (e: React.MouseEvent, buildingId: string) => {
+    (e.nativeEvent as any)._clickedGeozone = true;
+    const isActive = activeGeozone?.type === 'building' && activeGeozone.id === buildingId;
+
+    if (!isActive) {
+      onActiveGeozoneChange({ type: 'building', id: buildingId });
+      e.stopPropagation(); // Prevent panning and reset
+    }
   };
 
   // Find overlapping buildings
@@ -43,25 +62,33 @@ export default function BuildingsLayer({ model, mapToScreen }: BuildingsLayerPro
         const isOverlap = overlappingBuildingIds.has(b.id);
         const isInside = isBuildingInside(b);
         const isValid = !isOverlap && isInside;
+        const isActive = activeGeozone?.type === 'building' && activeGeozone.id === b.id;
+        const isHovered = hoveredId === b.id;
 
         return (
           <g
             id={`svg_building_g_${b.id}`}
             key={b.id}
-            className="opacity-90 hover:opacity-100 transition-opacity"
+            onMouseEnter={() => setHoveredId(b.id)}
+            onMouseLeave={() => setHoveredId(null)}
+            onMouseDown={(e) => handleMouseDown(e, b.id)}
+            className={`cursor-pointer transition-all duration-150 ${isActive ? 'opacity-100' : isHovered ? 'opacity-95' : 'opacity-90'}`}
           >
             <path
               d={pathStr}
-              fill="#fee2e2"
-              stroke={isValid ? "#ef4444" : "#dc2626"}
-              strokeWidth={isValid ? "2" : "3.5"}
+              fill={isActive ? "#fee2e2" : isHovered ? "#fecaca" : "#fee2e2"}
+              stroke={isActive ? "#b91c1c" : isHovered ? "#dc2626" : (isValid ? "#ef4444" : "#dc2626")}
+              strokeWidth={isActive ? "4.5" : isHovered ? "3.5" : (isValid ? "2" : "3.5")}
               strokeLinejoin="round"
-              className={isValid ? "" : "animate-pulse"}
+              className={`${isValid ? "" : "animate-pulse"} transition-all duration-150`}
+              style={{
+                filter: isActive ? 'drop-shadow(0 0 6px rgba(185, 28, 28, 0.5))' : 'none',
+              }}
             />
             <path
               d={pathStr}
               fill={isValid ? "url(#building-diagonal-pattern)" : "url(#striped-red-pattern)"}
-              className={isValid ? "opacity-30" : "opacity-50"}
+              className={`${isValid ? "opacity-30" : "opacity-50"} transition-all duration-150`}
             />
             {(() => {
               const centroid = calculateCentroid(b.points);
@@ -75,8 +102,8 @@ export default function BuildingsLayer({ model, mapToScreen }: BuildingsLayerPro
                     height="24"
                     rx="3"
                     fill={isValid ? "#fef2f2" : "#fef2f2"}
-                    stroke={isValid ? "#b91c1c" : "#dc2626"}
-                    strokeWidth={isValid ? "0.5" : "1.5"}
+                    stroke={isActive ? "#b91c1c" : isHovered ? "#dc2626" : (isValid ? "#b91c1c" : "#dc2626")}
+                    strokeWidth={isActive ? "1.5" : isHovered ? "1" : (isValid ? "0.5" : "1.5")}
                     className="opacity-90 shadow-xs"
                   />
                   <text

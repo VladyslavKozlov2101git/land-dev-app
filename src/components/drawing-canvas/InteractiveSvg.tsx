@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Point, CadastralModel, DrawMode } from '../../types';
+import { Point, CadastralModel, DrawMode, ActiveGeozone } from '../../types';
 import { calculatePolygonArea } from '../../utils/geo';
 import { useCoordinateSpace } from './hooks/useCoordinateSpace';
 import { useCanvasSnapping } from './hooks/useCanvasSnapping';
@@ -21,6 +21,8 @@ interface InteractiveSvgProps {
   onUpdateModel: (updates: Partial<CadastralModel>) => void;
   selectedPointId: string | null;
   onSelectPoint: (id: string | null) => void;
+  activeGeozone: ActiveGeozone | null;
+  onActiveGeozoneChange: (val: ActiveGeozone | null) => void;
   mode: DrawMode;
   zoom: number;
   setZoom: React.Dispatch<React.SetStateAction<number>>;
@@ -80,6 +82,8 @@ export default function InteractiveSvg({
   onUpdateModel,
   selectedPointId,
   onSelectPoint,
+  activeGeozone,
+  onActiveGeozoneChange,
   mode,
   zoom,
   setZoom,
@@ -243,60 +247,62 @@ export default function InteractiveSvg({
     const clickU = e.clientX - rect.left;
     const clickV = e.clientY - rect.top;
 
-    for (let i = 0; i < model.points.length; i++) {
-      const p = model.points[i];
-      const { u, v } = mapToScreen(p.x, p.y);
-      const dist = Math.sqrt((u - clickU) ** 2 + (v - clickV) ** 2);
-      if (dist < 10) {
-        setDraggedPoint({ type: 'parcel', id: p.id, index: i });
-        onSelectPoint(p.id);
-        return;
-      }
-    }
-
-    for (let bIdx = 0; bIdx < model.buildings.length; bIdx++) {
-      const b = model.buildings[bIdx];
-      for (let pIdx = 0; pIdx < b.points.length; pIdx++) {
-        const p = b.points[pIdx];
-        const { u, v } = mapToScreen(p.x, p.y);
-        const dist = Math.sqrt((u - clickU) ** 2 + (v - clickV) ** 2);
-        if (dist < 10) {
-          setDraggedPoint({ type: 'building', id: b.id, index: pIdx });
-          return;
-        }
-      }
-    }
-
-    for (let rIdx = 0; rIdx < model.restrictions.length; rIdx++) {
-      const r = model.restrictions[rIdx];
-      for (let pIdx = 0; pIdx < r.points.length; pIdx++) {
-        const p = r.points[pIdx];
-        const { u, v } = mapToScreen(p.x, p.y);
-        const dist = Math.sqrt((u - clickU) ** 2 + (v - clickV) ** 2);
-        if (dist < 10) {
-          setDraggedPoint({ type: 'restriction', id: r.id, index: pIdx });
-          return;
-        }
-      }
-    }
-
-    // Support dragging Land Use vertices
-    for (let luIdx = 0; luIdx < (model.landUseExplication || []).length; luIdx++) {
-      const lu = model.landUseExplication[luIdx];
-      if (lu.points) {
-        for (let pIdx = 0; pIdx < lu.points.length; pIdx++) {
-          const p = lu.points[pIdx];
+    // 1. Check if we clicked within 10px of any vertex of the ACTIVE geozone
+    if (activeGeozone) {
+      if (activeGeozone.type === 'parcel') {
+        for (let i = 0; i < model.points.length; i++) {
+          const p = model.points[i];
           const { u, v } = mapToScreen(p.x, p.y);
           const dist = Math.sqrt((u - clickU) ** 2 + (v - clickV) ** 2);
           if (dist < 10) {
-            setDraggedPoint({ type: 'land_use', id: lu.id, index: pIdx });
+            setDraggedPoint({ type: 'parcel', id: p.id, index: i });
+            onSelectPoint(p.id);
             return;
+          }
+        }
+      } else if (activeGeozone.type === 'building') {
+        const b = model.buildings.find((item) => item.id === activeGeozone.id);
+        if (b) {
+          for (let pIdx = 0; pIdx < b.points.length; pIdx++) {
+            const p = b.points[pIdx];
+            const { u, v } = mapToScreen(p.x, p.y);
+            const dist = Math.sqrt((u - clickU) ** 2 + (v - clickV) ** 2);
+            if (dist < 10) {
+              setDraggedPoint({ type: 'building', id: b.id, index: pIdx });
+              return;
+            }
+          }
+        }
+      } else if (activeGeozone.type === 'restriction') {
+        const r = model.restrictions.find((item) => item.id === activeGeozone.id);
+        if (r) {
+          for (let pIdx = 0; pIdx < r.points.length; pIdx++) {
+            const p = r.points[pIdx];
+            const { u, v } = mapToScreen(p.x, p.y);
+            const dist = Math.sqrt((u - clickU) ** 2 + (v - clickV) ** 2);
+            if (dist < 10) {
+              setDraggedPoint({ type: 'restriction', id: r.id, index: pIdx });
+              return;
+            }
+          }
+        }
+      } else if (activeGeozone.type === 'land_use') {
+        const lu = (model.landUseExplication || []).find((item) => item.id === activeGeozone.id);
+        if (lu && lu.points) {
+          for (let pIdx = 0; pIdx < lu.points.length; pIdx++) {
+            const p = lu.points[pIdx];
+            const { u, v } = mapToScreen(p.x, p.y);
+            const dist = Math.sqrt((u - clickU) ** 2 + (v - clickV) ** 2);
+            if (dist < 10) {
+              setDraggedPoint({ type: 'land_use', id: lu.id, index: pIdx });
+              return;
+            }
           }
         }
       }
     }
 
-    // Segment clicks: split segment and insert intermediate vertex
+    // 2. Segment clicks: split segment and insert intermediate vertex - only allowed for activeGeozone!
     const CLICK_TOLERANCE_PX = 8;
     let bestMatch: {
       type: 'parcel' | 'building' | 'restriction' | 'land_use';
@@ -307,100 +313,103 @@ export default function InteractiveSvg({
     } | null = null;
     let minSegDist = Infinity;
 
-    const segments = getAllSegments();
+    if (activeGeozone && !isDrawing) {
+      // A. Check parcel segments
+      if (activeGeozone.type === 'parcel' && model.points.length >= 3) {
+        for (let i = 0; i < model.points.length; i++) {
+          const p1 = model.points[i];
+          const p2 = model.points[(i + 1) % model.points.length];
+          const s1 = mapToScreen(p1.x, p1.y);
+          const s2 = mapToScreen(p2.x, p2.y);
+          
+          const { distance, x, y } = distanceToScreenSegment(clickU, clickV, s1.u, s1.v, s2.u, s2.v);
+          if (distance < CLICK_TOLERANCE_PX && distance < minSegDist) {
+            minSegDist = distance;
+            bestMatch = {
+              type: 'parcel',
+              insertIndex: i + 1,
+              projU: x,
+              projV: y,
+            };
+          }
+        }
+      }
 
-    // A. Check parcel segments
-    if (model.points.length >= 3) {
-      for (let i = 0; i < model.points.length; i++) {
-        const p1 = model.points[i];
-        const p2 = model.points[(i + 1) % model.points.length];
-        const s1 = mapToScreen(p1.x, p1.y);
-        const s2 = mapToScreen(p2.x, p2.y);
-        
-        const { distance, x, y } = distanceToScreenSegment(clickU, clickV, s1.u, s1.v, s2.u, s2.v);
-        if (distance < CLICK_TOLERANCE_PX && distance < minSegDist) {
-          minSegDist = distance;
-          bestMatch = {
-            type: 'parcel',
-            insertIndex: i + 1,
-            projU: x,
-            projV: y,
-          };
+      // B. Check building segments
+      if (activeGeozone.type === 'building') {
+        const b = model.buildings.find((item) => item.id === activeGeozone.id);
+        if (b && b.points.length >= 3) {
+          for (let i = 0; i < b.points.length; i++) {
+            const p1 = b.points[i];
+            const p2 = b.points[(i + 1) % b.points.length];
+            const s1 = mapToScreen(p1.x, p1.y);
+            const s2 = mapToScreen(p2.x, p2.y);
+
+            const { distance, x, y } = distanceToScreenSegment(clickU, clickV, s1.u, s1.v, s2.u, s2.v);
+            if (distance < CLICK_TOLERANCE_PX && distance < minSegDist) {
+              minSegDist = distance;
+              bestMatch = {
+                type: 'building',
+                ownerId: b.id,
+                insertIndex: i + 1,
+                projU: x,
+                projV: y,
+              };
+            }
+          }
+        }
+      }
+
+      // C. Check restriction segments
+      if (activeGeozone.type === 'restriction') {
+        const r = model.restrictions.find((item) => item.id === activeGeozone.id);
+        if (r && r.points.length >= 3) {
+          for (let i = 0; i < r.points.length; i++) {
+            const p1 = r.points[i];
+            const p2 = r.points[(i + 1) % r.points.length];
+            const s1 = mapToScreen(p1.x, p1.y);
+            const s2 = mapToScreen(p2.x, p2.y);
+
+            const { distance, x, y } = distanceToScreenSegment(clickU, clickV, s1.u, s1.v, s2.u, s2.v);
+            if (distance < CLICK_TOLERANCE_PX && distance < minSegDist) {
+              minSegDist = distance;
+              bestMatch = {
+                type: 'restriction',
+                ownerId: r.id,
+                insertIndex: i + 1,
+                projU: x,
+                projV: y,
+              };
+            }
+          }
+        }
+      }
+
+      // D. Check land use segments
+      if (activeGeozone.type === 'land_use') {
+        const lu = model.landUseExplication.find((item) => item.id === activeGeozone.id);
+        if (lu && lu.points && lu.points.length >= 3) {
+          for (let i = 0; i < lu.points.length; i++) {
+            const p1 = lu.points[i];
+            const p2 = lu.points[(i + 1) % lu.points.length];
+            const s1 = mapToScreen(p1.x, p1.y);
+            const s2 = mapToScreen(p2.x, p2.y);
+
+            const { distance, x, y } = distanceToScreenSegment(clickU, clickV, s1.u, s1.v, s2.u, s2.v);
+            if (distance < CLICK_TOLERANCE_PX && distance < minSegDist) {
+              minSegDist = distance;
+              bestMatch = {
+                type: 'land_use',
+                ownerId: lu.id,
+                insertIndex: i + 1,
+                projU: x,
+                projV: y,
+              };
+            }
+          }
         }
       }
     }
-
-    // B. Check building segments
-    model.buildings.forEach((b) => {
-      if (b.points.length >= 3) {
-        for (let i = 0; i < b.points.length; i++) {
-          const p1 = b.points[i];
-          const p2 = b.points[(i + 1) % b.points.length];
-          const s1 = mapToScreen(p1.x, p1.y);
-          const s2 = mapToScreen(p2.x, p2.y);
-
-          const { distance, x, y } = distanceToScreenSegment(clickU, clickV, s1.u, s1.v, s2.u, s2.v);
-          if (distance < CLICK_TOLERANCE_PX && distance < minSegDist) {
-            minSegDist = distance;
-            bestMatch = {
-              type: 'building',
-              ownerId: b.id,
-              insertIndex: i + 1,
-              projU: x,
-              projV: y,
-            };
-          }
-        }
-      }
-    });
-
-    // C. Check restriction segments
-    model.restrictions.forEach((r) => {
-      if (r.points.length >= 3) {
-        for (let i = 0; i < r.points.length; i++) {
-          const p1 = r.points[i];
-          const p2 = r.points[(i + 1) % r.points.length];
-          const s1 = mapToScreen(p1.x, p1.y);
-          const s2 = mapToScreen(p2.x, p2.y);
-
-          const { distance, x, y } = distanceToScreenSegment(clickU, clickV, s1.u, s1.v, s2.u, s2.v);
-          if (distance < CLICK_TOLERANCE_PX && distance < minSegDist) {
-            minSegDist = distance;
-            bestMatch = {
-              type: 'restriction',
-              ownerId: r.id,
-              insertIndex: i + 1,
-              projU: x,
-              projV: y,
-            };
-          }
-        }
-      }
-    });
-
-    // D. Check land use segments
-    (model.landUseExplication || []).forEach((lu) => {
-      if (lu.points && lu.points.length >= 3) {
-        for (let i = 0; i < lu.points.length; i++) {
-          const p1 = lu.points[i];
-          const p2 = lu.points[(i + 1) % lu.points.length];
-          const s1 = mapToScreen(p1.x, p1.y);
-          const s2 = mapToScreen(p2.x, p2.y);
-
-          const { distance, x, y } = distanceToScreenSegment(clickU, clickV, s1.u, s1.v, s2.u, s2.v);
-          if (distance < CLICK_TOLERANCE_PX && distance < minSegDist) {
-            minSegDist = distance;
-            bestMatch = {
-              type: 'land_use',
-              ownerId: lu.id,
-              insertIndex: i + 1,
-              projU: x,
-              projV: y,
-            };
-          }
-        }
-      }
-    });
 
     // If we matched an edge/segment, split it and insert a new point
     if (bestMatch && !isDrawing) {
@@ -473,6 +482,10 @@ export default function InteractiveSvg({
       };
       setTempPoints([...tempPoints, newPt]);
     } else {
+      const clickedGeozone = (e.nativeEvent as any)._clickedGeozone;
+      if (!clickedGeozone) {
+        onActiveGeozoneChange(null);
+      }
       setIsPanning(true);
       startPanPos.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
     }
@@ -683,30 +696,39 @@ export default function InteractiveSvg({
           mapToScreen={mapToScreen}
         />
 
+        <ParcelLayer
+          model={model}
+          mapToScreen={mapToScreen}
+          activeGeozone={activeGeozone}
+          onActiveGeozoneChange={onActiveGeozoneChange}
+        />
+
         <LandUseLayer
           model={model}
           mapToScreen={mapToScreen}
+          activeGeozone={activeGeozone}
+          onActiveGeozoneChange={onActiveGeozoneChange}
         />
 
         <RestrictionsLayer
           model={model}
           mapToScreen={mapToScreen}
-        />
-
-        <ParcelLayer
-          model={model}
-          mapToScreen={mapToScreen}
+          activeGeozone={activeGeozone}
+          onActiveGeozoneChange={onActiveGeozoneChange}
         />
 
         <BuildingsLayer
           model={model}
           mapToScreen={mapToScreen}
+          activeGeozone={activeGeozone}
+          onActiveGeozoneChange={onActiveGeozoneChange}
         />
 
         <VertexGripsLayer
           model={model}
           mode={mode}
           mapToScreen={mapToScreen}
+          activeGeozone={activeGeozone}
         />
 
         <DrawingPreviewLayer
@@ -722,6 +744,7 @@ export default function InteractiveSvg({
           model={model}
           selectedPointId={selectedPointId}
           mapToScreen={mapToScreen}
+          activeGeozone={activeGeozone}
         />
 
         <SnapIndicator activeSnapPoint={activeSnapPoint} />

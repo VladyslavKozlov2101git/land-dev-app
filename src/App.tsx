@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Point, CadastralModel } from './types';
+import { Point, CadastralModel, ActiveGeozone } from './types';
 import { createSampleCadastralModel, calculatePolygonArea, calculatePolygonPerimeter } from './utils/geo';
 import CadastralForm from './components/parcel/CadastralForm';
 import ChecklistPanel from './components/parcel/ChecklistPanel';
@@ -27,6 +27,7 @@ export default function App() {
   });
 
   const [selectedPointId, setSelectedPointId] = useState<string | null>(null);
+  const [activeGeozone, setActiveGeozone] = useState<ActiveGeozone | null>(null);
   const [isPrintOpen, setIsPrintOpen] = useState(false);
 
   // Layout Controls
@@ -46,6 +47,41 @@ export default function App() {
       console.error('Помилка збереження моделі в LocalStorage', e);
     }
   }, [model]);
+
+  // Automatically activate the correct geozone when a vertex/point is selected
+  useEffect(() => {
+    if (!selectedPointId) return;
+
+    // Check parcel points
+    if (model.points.some(p => p.id === selectedPointId)) {
+      setActiveGeozone({ type: 'parcel', id: 'parcel' });
+      return;
+    }
+
+    // Check building points
+    for (const b of model.buildings) {
+      if (b.points.some(p => p.id === selectedPointId)) {
+        setActiveGeozone({ type: 'building', id: b.id });
+        return;
+      }
+    }
+
+    // Check restriction points
+    for (const r of model.restrictions) {
+      if (r.points.some(p => p.id === selectedPointId)) {
+        setActiveGeozone({ type: 'restriction', id: r.id });
+        return;
+      }
+    }
+
+    // Check land use points
+    for (const lu of (model.landUseExplication || [])) {
+      if (lu.points && lu.points.some(p => p.id === selectedPointId)) {
+        setActiveGeozone({ type: 'land_use', id: lu.id });
+        return;
+      }
+    }
+  }, [selectedPointId]);
 
   // Partial update model state
   const handleUpdateModel = (updates: Partial<CadastralModel>) => {
@@ -243,6 +279,8 @@ export default function App() {
             onUpdateModel={handleUpdateModel}
             selectedPointId={selectedPointId}
             onSelectPoint={setSelectedPointId}
+            activeGeozone={activeGeozone}
+            onActiveGeozoneChange={setActiveGeozone}
           />
         </section>
 
@@ -263,6 +301,8 @@ export default function App() {
             onUpdateModel={handleUpdateModel}
             selectedPointId={selectedPointId}
             onSelectPoint={setSelectedPointId}
+            activeGeozone={activeGeozone}
+            onActiveGeozoneChange={setActiveGeozone}
           />
 
           {/* GeoJSON Importer/Exporter Collapsible Container */}
