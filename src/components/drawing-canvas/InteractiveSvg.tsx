@@ -18,7 +18,7 @@ import CadConsole from './components/CadConsole';
 
 interface InteractiveSvgProps {
   model: CadastralModel;
-  onUpdateModel: (updates: Partial<CadastralModel>) => void;
+  onUpdateModel: (updates: Partial<CadastralModel>, silent?: boolean) => void;
   selectedPointId: string | null;
   onSelectPoint: (id: string | null) => void;
   activeGeozone: ActiveGeozone | null;
@@ -578,7 +578,7 @@ export default function InteractiveSvg({
           x: targetCoord.x,
           y: targetCoord.y,
         };
-        onUpdateModel({ points: newPts });
+        onUpdateModel({ points: newPts }, true);
       } else if (draggedPoint.type === 'building' && draggedPoint.index !== undefined) {
         const updatedBuildings = model.buildings.map((b) => {
           if (b.id === draggedPoint.id) {
@@ -596,7 +596,7 @@ export default function InteractiveSvg({
           }
           return b;
         });
-        onUpdateModel({ buildings: updatedBuildings });
+        onUpdateModel({ buildings: updatedBuildings }, true);
       } else if (draggedPoint.type === 'restriction' && draggedPoint.index !== undefined) {
         const updatedRestrictions = model.restrictions.map((r) => {
           if (r.id === draggedPoint.id) {
@@ -614,7 +614,7 @@ export default function InteractiveSvg({
           }
           return r;
         });
-        onUpdateModel({ restrictions: updatedRestrictions });
+        onUpdateModel({ restrictions: updatedRestrictions }, true);
       } else if (draggedPoint.type === 'land_use' && draggedPoint.index !== undefined) {
         const updatedLu = (model.landUseExplication || []).map((lu) => {
           if (lu.id === draggedPoint.id && lu.points) {
@@ -632,7 +632,7 @@ export default function InteractiveSvg({
           }
           return lu;
         });
-        onUpdateModel({ landUseExplication: updatedLu });
+        onUpdateModel({ landUseExplication: updatedLu }, true);
       }
     } else if (isPanning) {
       setPan({
@@ -643,6 +643,10 @@ export default function InteractiveSvg({
   };
 
   const handleMouseUp = () => {
+    if (draggedPoint) {
+      // Trigger a non-silent update to record the final state in history
+      onUpdateModel({});
+    }
     setDraggedPoint(null);
     setIsPanning(false);
     setActiveSnapPoint(null);

@@ -9,7 +9,7 @@ import PointsTable from './components/points/PointsTable';
 import GeoJSONImporter from './components/geojson/GeoJSONImporter';
 import BuildingsRestrictionsEditor from './components/buildings-restrictions/BuildingsRestrictionsEditor';
 import CadastralPrintLayout from './components/print/CadastralPrintLayout';
-import { Compass, FileText, Printer, CheckSquare, RefreshCcw, Layers, MapPin, BadgeCheck, BookOpen, ChevronUp, ChevronDown, Menu, Eye, EyeOff, Settings, GripVertical, Info, ClipboardCheck, Table, Home } from 'lucide-react';
+import { Compass, FileText, Printer, CheckSquare, RefreshCcw, Layers, MapPin, BadgeCheck, BookOpen, ChevronUp, ChevronDown, Menu, Eye, EyeOff, Settings, GripVertical, Info, ClipboardCheck, Table, Home, Undo2, Redo2 } from 'lucide-react';
 
 const LOCAL_STORAGE_KEY = 'cadastral_survey_model';
 
@@ -25,6 +25,65 @@ export default function App() {
     }
     return createSampleCadastralModel();
   });
+
+  // History State for Undo/Redo
+  const [history, setHistory] = useState<CadastralModel[]>([]);
+  const [redoStack, setRedoStack] = useState<CadastralModel[]>([]);
+
+  const handleUndo = () => {
+    if (history.length === 0) return;
+    
+    const previous = history[history.length - 1];
+    const newHistory = history.slice(0, -1);
+    
+    setRedoStack(prev => [model, ...prev]);
+    setHistory(newHistory);
+    setModel(previous);
+  };
+
+  const handleRedo = () => {
+    if (redoStack.length === 0) return;
+    
+    const next = redoStack[0];
+    const newRedoStack = redoStack.slice(1);
+    
+    setHistory(prev => [...prev, model]);
+    setRedoStack(newRedoStack);
+    setModel(next);
+  };
+
+  // Keyboard Shortcuts for Undo/Redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check if user is typing in an input
+      const activeEl = document.activeElement;
+      const isTyping = activeEl && (
+        activeEl.tagName === 'INPUT' || 
+        activeEl.tagName === 'TEXTAREA' || 
+        activeEl.getAttribute('contenteditable') === 'true'
+      );
+
+      if (isTyping) return;
+
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key.toLowerCase() === 'z') {
+          if (e.shiftKey) {
+            e.preventDefault();
+            handleRedo();
+          } else {
+            e.preventDefault();
+            handleUndo();
+          }
+        } else if (e.key.toLowerCase() === 'y') {
+          e.preventDefault();
+          handleRedo();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [model, history, redoStack]);
 
   const [selectedPointId, setSelectedPointId] = useState<string | null>(null);
   const [activeGeozone, setActiveGeozone] = useState<ActiveGeozone | null>(null);
@@ -145,7 +204,13 @@ export default function App() {
   }, [selectedPointId]);
 
   // Partial update model state
-  const handleUpdateModel = (updates: Partial<CadastralModel>) => {
+  const handleUpdateModel = (updates: Partial<CadastralModel>, silent = false) => {
+    if (!silent) {
+      // Save to history before update
+      setHistory(prev => [...prev.slice(-49), model]); // Keep last 50 states
+      setRedoStack([]); // Clear redo on new change
+    }
+
     setModel(prev => ({
       ...prev,
       ...updates
@@ -155,6 +220,10 @@ export default function App() {
   // Hard Reset to sample template
   const handleResetToSample = () => {
     if (window.confirm('Ви впевнені, що бажаєте скинути всі поточні зміни та завантажити демо-приклад ділянки?')) {
+      // Save current state to history before reset
+      setHistory(prev => [...prev.slice(-49), model]);
+      setRedoStack([]);
+      
       setModel(createSampleCadastralModel());
       setSelectedPointId(null);
     }
@@ -330,6 +399,26 @@ export default function App() {
 
               <div className="w-px h-6 bg-slate-200 mx-1"></div>
 
+            <div className="flex items-center gap-2">
+              <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200 gap-1 mr-2">
+                <button
+                  onClick={handleUndo}
+                  disabled={history.length === 0}
+                  className="p-1.5 text-slate-600 hover:bg-white hover:text-blue-600 rounded-md transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-600 cursor-pointer"
+                  title="Крок назад (Ctrl+Z)"
+                >
+                  <Undo2 className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={handleRedo}
+                  disabled={redoStack.length === 0}
+                  className="p-1.5 text-slate-600 hover:bg-white hover:text-blue-600 rounded-md transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-600 cursor-pointer"
+                  title="Крок вперед (Ctrl+Y або Ctrl+Shift+Z)"
+                >
+                  <Redo2 className="h-4 w-4" />
+                </button>
+              </div>
+
               <button
                 id="reset_sample_state_btn"
                 onClick={handleResetToSample}
@@ -350,9 +439,9 @@ export default function App() {
                 <span>Друк & Витяг</span>
               </button>
             </div>
-
           </div>
-        </header>
+        </div>
+      </header>
       )}
 
       {/* 2. CORE WORKSPACE GRID - Refactored to Flex for Resizing */}

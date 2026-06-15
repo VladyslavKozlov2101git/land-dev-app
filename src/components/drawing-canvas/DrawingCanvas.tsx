@@ -8,7 +8,7 @@ import CanvasInventoryPanels from './CanvasInventoryPanels';
 
 interface DrawingCanvasProps {
   model: CadastralModel;
-  onUpdateModel: (updates: Partial<CadastralModel>) => void;
+  onUpdateModel: (updates: Partial<CadastralModel>, silent?: boolean) => void;
   selectedPointId: string | null;
   onSelectPoint: (id: string | null) => void;
   activeGeozone: ActiveGeozone | null;
