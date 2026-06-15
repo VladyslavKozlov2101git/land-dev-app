@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1e293b;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="32" height="32" rx="8" fill="url(#bg-grad)"/>
+  
+  <!-- Subtle Grid -->
+  <path d="M8 0v32M16 0v32M24 0v32M0 8h32M0 16h32M0 24h32" stroke="#ffffff" stroke-width="0.5" stroke-opacity="0.1"/>
+  
+  <!-- Parcel Shape -->
+  <path d="M10 12 L22 8 L26 20 L14 24 Z" fill="#10b981" fill-opacity="0.2" stroke="#10b981" stroke-width="2" stroke-linejoin="round"/>
+  
+  <!-- Vertices -->
+  <circle cx="10" cy="12" r="1.5" fill="#fff"/>
+  <circle cx="22" cy="8" r="1.5" fill="#fff"/>
+  <circle cx="26" cy="20" r="1.5" fill="#fff"/>
+  <circle cx="14" cy="24" r="1.5" fill="#fff"/>
+  
+  <!-- "Target" or Crosshair -->
+  <circle cx="22" cy="8" r="4" fill="none" stroke="#ef4444" stroke-width="1" stroke-dasharray="1 1"/>
+  <path d="M22 4v8M18 8h8" stroke="#ef4444" stroke-width="1"/>
+</svg>

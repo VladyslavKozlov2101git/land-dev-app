@@ -9,7 +9,7 @@ import PointsTable from './components/points/PointsTable';
 import GeoJSONImporter from './components/geojson/GeoJSONImporter';
 import BuildingsRestrictionsEditor from './components/buildings-restrictions/BuildingsRestrictionsEditor';
 import CadastralPrintLayout from './components/print/CadastralPrintLayout';
-import { Compass, FileText, Printer, CheckSquare, RefreshCcw, Layers, MapPin, BadgeCheck, BookOpen, ChevronUp, ChevronDown, Menu, Eye, EyeOff } from 'lucide-react';
+import { Compass, FileText, Printer, CheckSquare, RefreshCcw, Layers, MapPin, BadgeCheck, BookOpen, ChevronUp, ChevronDown, Menu, Eye, EyeOff, Settings, GripVertical, Info, ClipboardCheck, Table, Home } from 'lucide-react';
 
 const LOCAL_STORAGE_KEY = 'cadastral_survey_model';
 
@@ -32,8 +32,69 @@ export default function App() {
 
   // Layout Controls
   const [isNavbarVisible, setIsNavbarVisible] = useState(true);
-  const [isLeftSidebarVisible, setIsLeftSidebarVisible] = useState(true);
-  const [isRightSidebarVisible, setIsRightSidebarVisible] = useState(true);
+  const [isSidebarLeftVisible, setIsSidebarLeftVisible] = useState(true);
+  const [isSidebarRightVisible, setIsSidebarRightVisible] = useState(true);
+  
+  // Resize State
+  const [leftSidebarWidth, setLeftSidebarWidth] = useState(420);
+  const [rightSidebarWidth, setRightSidebarWidth] = useState(380);
+  const [isResizingLeft, setIsResizingLeft] = useState(false);
+  const [isResizingRight, setIsResizingRight] = useState(false);
+
+  // Widget Visibility State
+  const [visibleWidgets, setVisibleWidgets] = useState({
+    checklist: true,
+    parcelForm: true,
+    hints: true,
+    pointsTable: true,
+    buildingsEditor: true,
+    importer: true
+  });
+
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const startResizingLeft = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizingLeft(true);
+  };
+
+  const startResizingRight = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizingRight(true);
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isResizingLeft) {
+        const newWidth = Math.max(250, Math.min(600, e.clientX - 24)); // 24px is roughly the left padding
+        setLeftSidebarWidth(newWidth);
+      }
+      if (isResizingRight) {
+        const newWidth = Math.max(250, Math.min(600, window.innerWidth - e.clientX - 24));
+        setRightSidebarWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingLeft(false);
+      setIsResizingRight(false);
+    };
+
+    if (isResizingLeft || isResizingRight) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+    } else {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'default';
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizingLeft, isResizingRight]);
 
   // Individual Block (Widget) Controls
   const [isFormVisible, setIsFormVisible] = useState(true);
@@ -104,25 +165,12 @@ export default function App() {
   const areaHectares = areaSqM / 10000;
   const perimeter = calculatePolygonPerimeter(model.points);
 
-  // Dynamic Grid Math
-  const colSpanLeft = isLeftSidebarVisible ? 'col-span-1 lg:col-span-4' : 'hidden';
-  const colSpanRight = isRightSidebarVisible ? 'col-span-1 lg:col-span-3' : 'hidden';
-  
-  let colSpanMid = 'col-span-1 lg:col-span-5';
-  if (!isLeftSidebarVisible && !isRightSidebarVisible) {
-    colSpanMid = 'col-span-1 lg:col-span-12';
-  } else if (!isLeftSidebarVisible) {
-    colSpanMid = 'col-span-1 lg:col-span-9';
-  } else if (!isRightSidebarVisible) {
-    colSpanMid = 'col-span-1 lg:col-span-8';
-  }
-
   return (
     <div className="min-h-screen lg:h-screen lg:overflow-hidden bg-[#f8fafc] text-slate-800 flex flex-col font-sans selection:bg-blue-100 relative">
       
       {/* Absolute floating controls when navbar or sidebars are hidden */}
       {!isNavbarVisible && (
-        <div className="fixed top-3 left-3 z-[999] print:hidden">
+        <div className="fixed top-3 left-3 z-[1000] print:hidden">
           <button
             id="restore_navbar_float"
             onClick={() => setIsNavbarVisible(true)}
@@ -135,32 +183,32 @@ export default function App() {
         </div>
       )}
 
-      {!isLeftSidebarVisible && (
+      {!isSidebarLeftVisible && (
         <button
           id="restore_left_sidebar_float"
-          onClick={() => setIsLeftSidebarVisible(true)}
-          className="fixed left-0 top-1/2 -translate-y-1/2 z-[40] bg-blue-600 hover:bg-blue-700 text-white font-extrabold p-1 px-1.5 rounded-r-lg shadow-lg flex flex-col items-center gap-1 select-none text-[9px] uppercase tracking-widest transition-all animate-fade-in py-3 cursor-pointer"
-          title="Розгорнути лівий сайдбар"
+          onClick={() => setIsSidebarLeftVisible(true)}
+          className="fixed left-0 top-1/2 -translate-y-1/2 z-[500] bg-slate-900 hover:bg-black text-white font-extrabold p-1 px-2 rounded-r-lg shadow-xl flex flex-col items-center gap-1 select-none text-[10px] uppercase tracking-tighter transition-all animate-fade-in py-4 cursor-pointer border-y border-r border-slate-700"
+          title="Розгорнути панель інструментів"
         >
-          <span>Л</span><span>І</span><span>В</span><span>А</span>
+          <span className="[writing-mode:vertical-lr] rotate-180">ПАРАМЕТРИ</span>
         </button>
       )}
 
-      {!isRightSidebarVisible && (
+      {!isSidebarRightVisible && (
         <button
           id="restore_right_sidebar_float"
-          onClick={() => setIsRightSidebarVisible(true)}
-          className="fixed right-0 top-1/2 -translate-y-1/2 z-[40] bg-blue-600 hover:bg-blue-700 text-white font-extrabold p-1 px-1.5 rounded-l-lg shadow-lg flex flex-col items-center gap-1 select-none text-[9px] uppercase tracking-widest transition-all animate-fade-in py-3 cursor-pointer"
-          title="Розгорнути правий сайдбар"
+          onClick={() => setIsSidebarRightVisible(true)}
+          className="fixed right-0 top-1/2 -translate-y-1/2 z-[500] bg-slate-900 hover:bg-black text-white font-extrabold p-1 px-2 rounded-l-lg shadow-xl flex flex-col items-center gap-1 select-none text-[10px] uppercase tracking-tighter transition-all animate-fade-in py-4 cursor-pointer border-y border-l border-slate-700"
+          title="Розгорнути панель даних"
         >
-          <span>П</span><span>Р</span><span>А</span><span>В</span><span>А</span>
+          <span className="[writing-mode:vertical-lr]">ДАНІ ТА ТОЧКИ</span>
         </button>
       )}
 
       {/* 1. STATE LOGO / TOP HEAD BAR (Hides on toggle or printing) */}
       {isNavbarVisible && (
-        <header className="border-b border-slate-200 bg-white shadow-xs px-6 py-2.5 print:hidden shrink-0 animate-fade-in" id="top_workspace_header">
-          <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-4">
+        <header className="border-b border-slate-200 bg-white shadow-xs px-6 py-2.5 print:hidden shrink-0 animate-fade-in relative z-[2000]" id="top_workspace_header">
+          <div className="max-w-[1600px] mx-auto flex flex-col lg:flex-row items-center justify-between gap-4">
             
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-lg shadow-sm">
@@ -177,41 +225,115 @@ export default function App() {
               </div>
             </div>
 
-            {/* Layout Visibility Toggle Controls */}
-            <div className="flex flex-wrap items-center bg-slate-100 p-1 rounded-lg border border-slate-150 gap-1.5 text-[11px] font-bold">
-              <span className="text-slate-500 font-semibold px-2 text-[10px] uppercase font-mono">Відображення:</span>
-              <button
-                id="header_toggle_left_sidebar"
-                onClick={() => setIsLeftSidebarVisible(!isLeftSidebarVisible)}
-                className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1 active:scale-95 cursor-pointer ${isLeftSidebarVisible ? 'bg-white text-blue-700 shadow-3xs' : 'text-slate-450 hover:text-slate-700'}`}
-              >
-                {isLeftSidebarVisible ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-                Ліві форми
-              </button>
-              <button
-                id="header_toggle_right_sidebar"
-                onClick={() => setIsRightSidebarVisible(!isRightSidebarVisible)}
-                className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1 active:scale-95 cursor-pointer ${isRightSidebarVisible ? 'bg-white text-blue-700 shadow-3xs' : 'text-slate-450 hover:text-slate-700'}`}
-              >
-                {isRightSidebarVisible ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-                Праві Координати
-              </button>
-              <button
-                id="header_hide_navbar"
-                onClick={() => setIsNavbarVisible(false)}
-                className="px-2.5 py-1 rounded-md transition-all text-rose-600 hover:bg-rose-50 flex items-center gap-1 cursor-pointer"
-                title="Сховати верхню навігаційну панель повністю"
-              >
-                <ChevronUp className="h-3.5 w-3.5" />
-                Сховати Меню
-              </button>
-            </div>
+            <div className="flex items-center gap-4">
+              {/* Settings / Gear Menu */}
+              <div className="relative">
+                <button
+                  id="settings_menu_toggle"
+                  onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all active:scale-95 cursor-pointer font-bold text-[11px] ${isSettingsOpen ? 'bg-slate-900 text-white border-slate-900 shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}
+                >
+                  <Settings className={`h-4 w-4 ${isSettingsOpen ? 'animate-spin-slow' : ''}`} />
+                  <span>Керування модулями</span>
+                  {isSettingsOpen ? <ChevronUp className="h-3 w-3 opacity-50" /> : <ChevronDown className="h-3 w-3 opacity-50" />}
+                </button>
 
-            <div className="flex items-center gap-2">
+                {isSettingsOpen && (
+                  <div className="absolute top-full right-0 mt-2 w-80 bg-white border border-slate-200 shadow-2xl rounded-xl z-[2000] p-5 animate-fade-in origin-top-right">
+                    <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-2">
+                      <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Основні панелі</span>
+                      <Settings className="h-3.5 w-3.5 text-slate-300" />
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 gap-2">
+                        <label className="flex items-center justify-between group cursor-pointer p-2 hover:bg-slate-50 rounded-lg transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg transition-colors ${isSidebarLeftVisible ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                              <Menu className="h-4 w-4" />
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-xs font-bold text-slate-700">Панель параметрів</span>
+                              <span className="text-[10px] text-slate-400 font-medium">Форми та налаштування</span>
+                            </div>
+                          </div>
+                          <input 
+                            type="checkbox" 
+                            checked={isSidebarLeftVisible} 
+                            onChange={() => setIsSidebarLeftVisible(!isSidebarLeftVisible)}
+                            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                          />
+                        </label>
+
+                        <label className="flex items-center justify-between group cursor-pointer p-2 hover:bg-slate-50 rounded-lg transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg transition-colors ${isSidebarRightVisible ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                              <Table className="h-4 w-4" />
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-xs font-bold text-slate-700">Панель даних</span>
+                              <span className="text-[10px] text-slate-400 font-medium">Точки та об'єкти</span>
+                            </div>
+                          </div>
+                          <input 
+                            type="checkbox" 
+                            checked={isSidebarRightVisible} 
+                            onChange={() => setIsSidebarRightVisible(!isSidebarRightVisible)}
+                            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+
+                      <div className="h-px bg-slate-100"></div>
+                      <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-1">Окремі модулі</span>
+
+                      <div className="grid grid-cols-1 gap-1">
+                        {[
+                          { key: 'checklist', label: 'Кадастрова перевірка', icon: ClipboardCheck, desc: 'Валідація XML/ДЗК' },
+                          { key: 'parcelForm', label: 'Реквізити ділянки', icon: BookOpen, desc: 'Власники та адреса' },
+                          { key: 'hints', label: 'Нормативні підказки', icon: Info, desc: 'Законодавча база' },
+                          { key: 'pointsTable', label: 'Каталог координат', icon: Table, desc: 'Редагування X/Y' },
+                          { key: 'buildingsEditor', label: 'Будівлі та обмеження', icon: Home, desc: 'Інвентаризація' },
+                          { key: 'importer', label: 'Імпорт GeoJSON/XML', icon: Layers, desc: 'Обмін даними' },
+                        ].map((item) => (
+                          <label key={item.key} className="flex items-center justify-between group cursor-pointer hover:bg-slate-50 p-2 rounded-lg transition-colors">
+                            <div className="flex items-center gap-3">
+                              <item.icon className={`h-4 w-4 transition-colors ${visibleWidgets[item.key as keyof typeof visibleWidgets] ? 'text-blue-500' : 'text-slate-300'}`} />
+                              <div className="flex flex-col">
+                                <span className="text-[11px] font-bold text-slate-600">{item.label}</span>
+                                <span className="text-[9px] text-slate-400">{item.desc}</span>
+                              </div>
+                            </div>
+                            <input 
+                              type="checkbox" 
+                              checked={visibleWidgets[item.key as keyof typeof visibleWidgets]} 
+                              onChange={() => setVisibleWidgets(prev => ({ ...prev, [item.key]: !prev[item.key as keyof typeof visibleWidgets] }))}
+                              className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            />
+                          </label>
+                        ))}
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-100">
+                        <button
+                          onClick={() => setIsNavbarVisible(false)}
+                          className="w-full flex items-center justify-center gap-2 py-2.5 bg-slate-50 text-slate-500 hover:bg-rose-50 hover:text-rose-600 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer border border-transparent hover:border-rose-100"
+                        >
+                          <ChevronUp className="h-3.5 w-3.5" />
+                          Сховати верхню панель
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="w-px h-6 bg-slate-200 mx-1"></div>
+
               <button
                 id="reset_sample_state_btn"
                 onClick={handleResetToSample}
-                className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-250 border border-slate-200 text-slate-750 font-bold hover:text-slate-900 rounded text-[11px] transition-all active:scale-95"
+                className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-250 border border-slate-200 text-slate-750 font-bold hover:text-slate-900 rounded text-[11px] transition-all active:scale-95 cursor-pointer"
                 title="Відновити демонстраційну ділянку"
               >
                 <RefreshCcw className="h-3 w-3" />
@@ -221,7 +343,7 @@ export default function App() {
               <button
                 id="open_print_preview_btn"
                 onClick={() => setIsPrintOpen(true)}
-                className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded text-[11px] font-extrabold shadow-sm hover:bg-blue-700 transition-all active:scale-95"
+                className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded text-[11px] font-extrabold shadow-sm hover:bg-blue-700 transition-all active:scale-95 cursor-pointer"
                 title="Друк кадастрового звіту"
               >
                 <Printer className="h-3.5 w-3.5" />
@@ -233,47 +355,71 @@ export default function App() {
         </header>
       )}
 
-      {/* 2. CORE WORKSPACE GRID */}
-      <main className="flex-grow lg:min-h-0 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 print:hidden">
+      {/* 2. CORE WORKSPACE GRID - Refactored to Flex for Resizing */}
+      <main className="flex-grow lg:min-h-0 w-full mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row gap-0 print:hidden overflow-hidden">
         
         {/* ========================================== */}
         {/* COLUMN 1: PROPERTY METADATA & FORMS (Left) */}
         {/* ========================================== */}
-        <section className={`${colSpanLeft} space-y-6 shrink-0 lg:h-full lg:overflow-y-auto pr-1`}>
-          
-          <ChecklistPanel model={model} />
-
-          {/* Core parcel details form wrapper with Block-level Toggle */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden" id="form_widget_block">
-            <button
-              onClick={() => setIsFormVisible(!isFormVisible)}
-              className="w-full flex items-center justify-between p-3.5 bg-slate-50/70 border-b border-slate-100 hover:bg-slate-100/50 transition-colors cursor-pointer text-left"
-              id="toggle_form_block_btn"
+        {isSidebarLeftVisible && (
+          <>
+            <section 
+              style={{ width: leftSidebarWidth }}
+              className="hidden lg:flex flex-col gap-6 shrink-0 h-full overflow-y-auto py-6 pr-4 scrollbar-thin"
             >
-              <div className="flex items-center gap-1.5">
-                <BookOpen className="h-4 w-4 text-blue-600" />
-                <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
-                  Реквізити ділянки та суб'єкта
-                </span>
-              </div>
-              <div>
-                {isFormVisible ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
-              </div>
-            </button>
-            {isFormVisible && (
-              <div className="animate-fade-in">
-                <CadastralForm model={model} onUpdateModel={handleUpdateModel} />
-              </div>
-            )}
-          </div>
+              {visibleWidgets.checklist && <ChecklistPanel model={model} />}
 
-          <RegulatoryHints />
-        </section>
+              {visibleWidgets.parcelForm && (
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden shrink-0" id="form_widget_block">
+                  <button
+                    onClick={() => setIsFormVisible(!isFormVisible)}
+                    className="w-full flex items-center justify-between p-3.5 bg-slate-50/70 border-b border-slate-100 hover:bg-slate-100/50 transition-colors cursor-pointer text-left"
+                    id="toggle_form_block_btn"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <BookOpen className="h-4 w-4 text-blue-600" />
+                      <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                        Реквізити ділянки
+                      </span>
+                    </div>
+                    <div>
+                      {isFormVisible ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                    </div>
+                  </button>
+                  {isFormVisible && (
+                    <div className="animate-fade-in">
+                      <CadastralForm model={model} onUpdateModel={handleUpdateModel} />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {visibleWidgets.hints && <RegulatoryHints />}
+            </section>
+
+            {/* Left Resizer Handle */}
+            <div 
+              onMouseDown={startResizingLeft}
+              className="hidden lg:flex w-1.5 hover:w-2 bg-slate-200/50 hover:bg-blue-400 transition-all cursor-col-resize self-stretch z-10 items-center justify-center group"
+              title="Перетягніть для ресайзу"
+            >
+              <div className="h-8 w-1 bg-slate-300 rounded-full group-hover:bg-blue-200 transition-colors"></div>
+            </div>
+          </>
+        )}
+
+        {/* Mobile View of Sidebars (Fallback when not on LG) */}
+        {!isSidebarLeftVisible && (
+          <div className="lg:hidden space-y-6 py-4">
+             {/* Simple list or hidden on mobile if desired, keeping original grid behavior for mobile would be better but requires more logic. 
+                 Let's keep it simple: resizing and visibility toggles are mostly for desktop productivity. */}
+          </div>
+        )}
 
         {/* ========================================== */}
         {/* COLUMN 2: CAD VISUAL EDITOR CANVAS (Middle) */}
         {/* ========================================== */}
-        <section className={`${colSpanMid} flex flex-col h-[500px] lg:h-full min-h-0`}>
+        <section className="flex-grow flex flex-col min-h-[500px] lg:h-full lg:min-w-0 py-6 px-4">
           <DrawingCanvas
             model={model}
             onUpdateModel={handleUpdateModel}
@@ -287,46 +433,67 @@ export default function App() {
         {/* ========================================== */}
         {/* COLUMN 3: POINTS LIST & IMPORTS (Right) */}
         {/* ========================================== */}
-        <section className={`${colSpanRight} space-y-6 shrink-0 lg:h-full lg:overflow-y-auto pr-1`}>
-          
-          <PointsTable
-            model={model}
-            onUpdateModel={handleUpdateModel}
-            selectedPointId={selectedPointId}
-            onSelectPoint={setSelectedPointId}
-          />
-
-          <BuildingsRestrictionsEditor
-            model={model}
-            onUpdateModel={handleUpdateModel}
-            selectedPointId={selectedPointId}
-            onSelectPoint={setSelectedPointId}
-            activeGeozone={activeGeozone}
-            onActiveGeozoneChange={setActiveGeozone}
-          />
-
-          {/* GeoJSON Importer/Exporter Collapsible Container */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden" id="geojson_importer_widget_block">
-            <button
-              onClick={() => setIsImporterVisible(!isImporterVisible)}
-              className="w-full flex items-center justify-between p-4 bg-slate-50 border-b border-slate-100 hover:bg-slate-100/50 transition-colors cursor-pointer text-left"
-              id="toggle_importer_block_btn"
+        {isSidebarRightVisible && (
+          <>
+            {/* Right Resizer Handle */}
+            <div 
+              onMouseDown={startResizingRight}
+              className="hidden lg:flex w-1.5 hover:w-2 bg-slate-200/50 hover:bg-blue-400 transition-all cursor-col-resize self-stretch z-10 items-center justify-center group"
+              title="Перетягніть для ресайзу"
             >
-              <div className="flex items-center gap-1.5">
-                <Layers className="h-4.5 w-4.5 text-blue-600" />
-                <span className="text-slate-800 font-bold text-xs uppercase tracking-wider">Імпорт & Експорт (GeoJSON)</span>
-              </div>
-              <div>
-                {isImporterVisible ? <ChevronUp className="h-4 w-4 text-slate-500" /> : <ChevronDown className="h-4 w-4 text-slate-500" />}
-              </div>
-            </button>
-            {isImporterVisible && (
-              <div className="p-4 bg-white animate-fade-in border-t border-slate-50">
-                <GeoJSONImporter model={model} onUpdateModel={handleUpdateModel} />
-              </div>
-            )}
-          </div>
-        </section>
+              <div className="h-8 w-1 bg-slate-300 rounded-full group-hover:bg-blue-200 transition-colors"></div>
+            </div>
+
+            <section 
+              style={{ width: rightSidebarWidth }}
+              className="hidden lg:flex flex-col gap-6 shrink-0 h-full overflow-y-auto py-6 pl-4 scrollbar-thin"
+            >
+              {visibleWidgets.pointsTable && (
+                <PointsTable
+                  model={model}
+                  onUpdateModel={handleUpdateModel}
+                  selectedPointId={selectedPointId}
+                  onSelectPoint={setSelectedPointId}
+                />
+              )}
+
+              {visibleWidgets.buildingsEditor && (
+                <BuildingsRestrictionsEditor
+                  model={model}
+                  onUpdateModel={handleUpdateModel}
+                  selectedPointId={selectedPointId}
+                  onSelectPoint={setSelectedPointId}
+                  activeGeozone={activeGeozone}
+                  onActiveGeozoneChange={setActiveGeozone}
+                />
+              )}
+
+              {/* GeoJSON Importer/Exporter Collapsible Container */}
+              {visibleWidgets.importer && (
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden" id="geojson_importer_widget_block">
+                  <button
+                    onClick={() => setIsImporterVisible(!isImporterVisible)}
+                    className="w-full flex items-center justify-between p-4 bg-slate-50 border-b border-slate-100 hover:bg-slate-100/50 transition-colors cursor-pointer text-left"
+                    id="toggle_importer_block_btn"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <Layers className="h-4.5 w-4.5 text-blue-600" />
+                      <span className="text-slate-800 font-bold text-xs uppercase tracking-wider">GeoJSON Імпорт</span>
+                    </div>
+                    <div>
+                      {isImporterVisible ? <ChevronUp className="h-4 w-4 text-slate-500" /> : <ChevronDown className="h-4 w-4 text-slate-500" />}
+                    </div>
+                  </button>
+                  {isImporterVisible && (
+                    <div className="p-4 bg-white animate-fade-in border-t border-slate-50">
+                      <GeoJSONImporter model={model} onUpdateModel={handleUpdateModel} />
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+          </>
+        )}
 
       </main>
 

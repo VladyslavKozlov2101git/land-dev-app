@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CadastralModel } from '../../types';
-import { CheckSquare, ChevronUp, ChevronDown } from 'lucide-react';
+import { CheckSquare, ChevronUp, ChevronDown, ClipboardCheck } from 'lucide-react';
 import { isPolygonInsidePolygon, doPolygonsOverlap } from '../../utils/geo';
 
 interface ChecklistPanelProps {
@@ -61,46 +61,43 @@ export default function ChecklistPanel({ model }: ChecklistPanelProps) {
   const totalCompletedChecks = checks.filter(c => c.checked).length;
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden" id="quick_checklist_panel">
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden shrink-0" id="quick_checklist_panel">
       <button
         onClick={() => setIsChecklistVisible(!isChecklistVisible)}
-        className="w-full flex items-center justify-between p-3.5 bg-slate-50/70 border-b border-slate-100 hover:bg-slate-100/50 transition-colors cursor-pointer text-left"
+        className="w-full flex items-center justify-between p-4 bg-emerald-50/50 border-b border-emerald-100 hover:bg-emerald-100/50 transition-colors cursor-pointer text-left"
         id="toggle_checklist_panel_btn"
       >
-        <div className="flex items-center gap-1.5">
-          <CheckSquare className="h-4 w-4 text-blue-600" />
-          <span className="text-xs font-extrabold text-slate-700 tracking-wider uppercase">
-            Кадастрова перевірка
+        <div className="flex items-center gap-2">
+          <ClipboardCheck className="h-5 w-5 text-emerald-600" />
+          <span className="text-[13px] font-black text-slate-800 uppercase tracking-tight">
+            Кадастрова перевірка ділянки
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono font-bold text-blue-800 bg-blue-100/50 px-1.5 py-0.2 rounded border border-blue-150">
+          <span className="text-[11px] font-mono font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200">
             {totalCompletedChecks}/{checks.length}
           </span>
-          {isChecklistVisible ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+          {isChecklistVisible ? <ChevronUp className="h-4 w-4 text-emerald-600" /> : <ChevronDown className="h-4 w-4 text-emerald-600" />}
         </div>
       </button>
       
       {isChecklistVisible && (
-        <div className="p-4 space-y-2 animate-fade-in text-xs">
+        <div className="p-4 space-y-2 animate-fade-in text-xs max-h-[450px] overflow-y-auto scrollbar-thin">
           {checks.map((chk, i) => (
-            <div key={i} className="flex items-start justify-between p-2 rounded-lg bg-slate-50 border border-slate-150">
-              <div className="flex items-start gap-1.5">
-                <input
-                  type="checkbox"
-                  checked={chk.checked}
-                  readOnly
-                  className="mt-0.5 w-3.5 h-3.5 rounded-sm border-slate-300 text-blue-600 focus:ring-blue-500 inline-block pointer-events-none"
-                />
+            <div key={i} className={`flex items-start justify-between p-3 rounded-lg border transition-all ${chk.checked ? 'bg-white border-slate-150' : 'bg-rose-50/30 border-rose-100'}`}>
+              <div className="flex items-start gap-3">
+                <div className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center shrink-0 ${chk.checked ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-white border-slate-300'}`}>
+                   {chk.checked && <CheckSquare className="h-3 w-3" />}
+                </div>
                 <div className="text-left leading-tight">
-                  <span className="font-semibold text-slate-700 block">{chk.label}</span>
-                  <span className="text-[10px] text-slate-450 block font-mono truncate max-w-[170px]" title={chk.detail}>
+                  <span className={`text-[11px] font-bold block ${chk.checked ? 'text-slate-700' : 'text-slate-500'}`}>{chk.label}</span>
+                  <span className="text-[10px] text-slate-400 block font-mono mt-0.5 truncate max-w-[220px]" title={chk.detail}>
                     {chk.detail}
                   </span>
                 </div>
               </div>
-              <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded shrink-0 ${chk.checked ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-500'}`}>
-                {chk.checked ? 'OK' : 'Нема'}
+              <span className={`text-[9px] font-black px-1.5 py-0.5 rounded shrink-0 uppercase tracking-wider ${chk.checked ? 'text-emerald-600' : 'text-rose-500'}`}>
+                {chk.checked ? 'OK' : 'MISS'}
               </span>
             </div>
           ))}
